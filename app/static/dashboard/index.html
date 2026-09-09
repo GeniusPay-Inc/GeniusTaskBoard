@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TaskBoard — Écran de suivi</title>
+<script src="https://unpkg.com/lucide@1.43.0/dist/umd/lucide.js"></script>
+<link rel="stylesheet" href="/assets/geni.css">
 <style>
   :root {
     color-scheme: dark;
@@ -35,13 +37,15 @@
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
     padding-bottom: clamp(14px, 2vw, 22px); border-bottom: 1px solid var(--line); margin-bottom: clamp(14px, 2vw, 22px);
   }
-  .brand { display: flex; align-items: center; gap: 14px; }
-  .brand .mark {
-    width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, #2563eb, #a855f7);
-    display: flex; align-items: center; justify-content: center; font-weight: 900; letter-spacing: -1px; font-size: 17px;
+  .brand { display: flex; align-items: center; gap: 16px; }
+  .gp-logo { display: flex; align-items: center; font-weight: 800; font-size: clamp(18px, 2.2vw, 24px); letter-spacing: -.01em; white-space: nowrap; }
+  .gp-logo .g { color: #ffffff; }
+  .gp-logo .p { background: #2563eb; color: #fff; padding: 1px 9px 3px; border-radius: 7px; margin-left: 4px; }
+  .brand .tag {
+    font-size: 12px; color: var(--muted); letter-spacing: .16em; text-transform: uppercase; font-weight: 700;
+    padding-left: 16px; margin-left: 2px; border-left: 1px solid var(--line);
   }
-  .brand h1 { margin: 0; font-size: clamp(18px, 2.4vw, 26px); letter-spacing: .04em; text-transform: uppercase; }
-  .brand .tag { font-size: 11px; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
+  svg.lucide { width: 16px; height: 16px; stroke-width: 2.2; vertical-align: -3px; }
   .live {
     display: flex; align-items: center; gap: 8px; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.4);
     color: #fca5a5; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .08em;
@@ -69,6 +73,7 @@
     font-weight: 800; letter-spacing: .1em; text-transform: uppercase; font-size: clamp(12px, 1.3vw, 14px);
   }
   .section-head .n-badge { margin-left: auto; background: rgba(255,255,255,.15); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+  .section-head svg.lucide { margin-right: 4px; width: 15px; height: 15px; }
   .section-head.en_cours { background: linear-gradient(90deg, rgba(56,189,248,.22), transparent); color: var(--info); }
   .section-head.en_retard { background: linear-gradient(90deg, rgba(239,68,68,.25), transparent); color: #fca5a5; }
   .section-head.a_faire { background: linear-gradient(90deg, rgba(148,163,184,.18), transparent); color: #cbd5e1; }
@@ -98,8 +103,8 @@
   .bar-fill.ok { background: var(--ok); } .bar-fill.warn { background: var(--warn); } .bar-fill.danger { background: var(--danger); }
   .empty-row { padding: 20px 16px; color: var(--muted); font-size: 13px; text-align: center; }
 
-  .board-empty { text-align: center; padding: 80px 20px; color: var(--muted); }
-  .board-empty .big { font-size: 40px; margin-bottom: 10px; }
+  .board-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 15px; }
+  .board-empty .geni { margin-bottom: 6px; }
 
   /* ---------- Toast ---------- */
   .toast {
@@ -110,6 +115,8 @@
   .toast.show { opacity: 1; transform: translateY(0); }
   .toast.completed { background: var(--info); color: #04182b; }
   .toast.overdue { background: var(--danger); color: #2b0605; }
+  .btn-ic { display: inline-flex; align-items: center; gap: 8px; }
+  .toast svg.lucide { width: 18px; height: 18px; }
 
   /* ---------- Ticker ---------- */
   .ticker {
@@ -117,9 +124,10 @@
     display: flex; align-items: center; overflow: hidden; z-index: 40;
   }
   .ticker .label {
-    flex: none; height: 100%; display: flex; align-items: center; padding: 0 14px; background: linear-gradient(90deg,#dc2626,#7c2d12);
+    flex: none; height: 100%; display: flex; align-items: center; gap: 6px; padding: 0 14px; background: linear-gradient(90deg,#dc2626,#7c2d12);
     font-weight: 800; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; z-index: 2;
   }
+  .ticker .label svg.lucide { width: 14px; height: 14px; }
   .ticker-track { display: flex; white-space: nowrap; animation: scrollTicker 32s linear infinite; padding-left: 100%; }
   .ticker-track span { padding: 0 28px; font-size: 13px; color: #c9d3ea; font-variant-numeric: tabular-nums; }
   @keyframes scrollTicker { from { transform: translateX(0); } to { transform: translateX(-100%); } }
@@ -129,11 +137,8 @@
   <div class="wrap">
     <header>
       <div class="brand">
-        <div class="mark">TB</div>
-        <div>
-          <h1>TaskBoard</h1>
-          <div class="tag">Écran de suivi en temps réel</div>
-        </div>
+        <div class="gp-logo"><span class="g">Genius</span><span class="p">Pay</span></div>
+        <div class="tag">TaskBoard · Suivi temps réel</div>
       </div>
       <div class="live"><span class="dot"></span>LIVE</div>
       <div class="clock"><span id="clockTime">--:--:--</span><span class="date" id="clockDate"></span></div>
@@ -147,10 +152,11 @@
   <div id="toast" class="toast"></div>
 
   <div class="ticker">
-    <div class="label">⚡ Activité</div>
+    <div class="label"><i data-lucide="zap"></i> Activité</div>
     <div class="ticker-track" id="tickerTrack"><span>En attente d'activité…</span></div>
   </div>
 
+  <script src="/assets/geni.js"></script>
   <script>
     const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
     const AVATAR_COLORS = ["#38bdf8", "#a855f7", "#f472b6", "#fbbf24", "#4ade80", "#22d3ee", "#fb7185"];
@@ -162,6 +168,7 @@
       return AVATAR_COLORS[h % AVATAR_COLORS.length];
     }
     function initials(u) { return ((u.prenom[0] || "") + (u.nom[0] || "")).toUpperCase(); }
+    function icon(name, cls) { return `<i data-lucide="${name}"${cls ? ` class="${cls}"` : ""}></i>`; }
     function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
 
     function beep(freqs = [880], duration = 180, gap = 60) {
@@ -180,10 +187,11 @@
         });
       } catch (e) {}
     }
-    function showToast(text, cls) {
+    function showToast(iconName, text, cls) {
       const toast = document.getElementById("toast");
-      toast.textContent = text;
-      toast.className = "toast show " + (cls || "");
+      toast.innerHTML = `${icon(iconName)} <span>${escapeHtml(text)}</span>`;
+      toast.className = "toast show btn-ic " + (cls || "");
+      lucide.createIcons();
       setTimeout(() => toast.classList.remove("show"), 4000);
     }
     function pushTicker(text) {
@@ -257,11 +265,13 @@
 
       const sections = document.getElementById("sections");
       const html = [
-        sectionHtml("en_retard", "🔴 En retard", enRetard),
-        sectionHtml("en_cours", "🔵 En cours", enCours),
-        sectionHtml("a_faire", "⚪ À venir", aFaire),
+        sectionHtml("en_retard", `${icon("octagon-alert")} En retard`, enRetard),
+        sectionHtml("en_cours", `${icon("activity")} En cours`, enCours),
+        sectionHtml("a_faire", `${icon("clock-3")} À venir`, aFaire),
       ].join("");
-      sections.innerHTML = html || `<div class="board-empty"><div class="big">🌙</div>Aucune tâche en cours pour le moment.</div>`;
+      sections.innerHTML = html || `<div class="board-empty"><div class="geni geni-lg" id="geniEmpty"></div>Aucune tâche en cours pour le moment.</div>`;
+      lucide.createIcons();
+      if (!html) Geni.mount(document.getElementById("geniEmpty"), { state: "idle", size: "lg" });
     }
 
     function tickTimers() {
@@ -293,9 +303,9 @@
       const ws = new WebSocket(WS_URL);
       ws.onmessage = (evt) => {
         const msg = JSON.parse(evt.data);
-        if (msg.type === "task.created") { showToast(`🆕 Nouvelle tâche : ${msg.task.titre}`, ""); pushTicker(`Nouvelle tâche créée — ${msg.task.titre}`); beep([880, 1046]); }
-        else if (msg.type === "task.completed") { showToast(`✅ Tâche terminée : ${msg.task.titre}`, "completed"); pushTicker(`Tâche terminée — ${msg.task.titre}`); beep([660, 880, 1318], 150, 40); }
-        else if (msg.type === "task.overdue") { showToast(`⏰ Tâche en retard : ${msg.task.titre}`, "overdue"); pushTicker(`Tâche en retard — ${msg.task.titre}`); beep([420, 300], 260, 80); }
+        if (msg.type === "task.created") { showToast("sparkles", `Nouvelle tâche : ${msg.task.titre}`, ""); pushTicker(`Nouvelle tâche créée — ${msg.task.titre}`); beep([880, 1046]); }
+        else if (msg.type === "task.completed") { showToast("check-circle-2", `Tâche terminée : ${msg.task.titre}`, "completed"); pushTicker(`Tâche terminée — ${msg.task.titre}`); beep([660, 880, 1318], 150, 40); }
+        else if (msg.type === "task.overdue") { showToast("alarm-clock", `Tâche en retard : ${msg.task.titre}`, "overdue"); pushTicker(`Tâche en retard — ${msg.task.titre}`); beep([420, 300], 260, 80); }
         else if (msg.type === "task.started") { pushTicker(`Tâche démarrée — ${msg.task.titre}`); }
         loadDashboard().then(() => {
           const row = document.querySelector(`.row[data-id="${msg.task && msg.task.id}"]`);
@@ -305,6 +315,7 @@
       ws.onclose = () => setTimeout(connectWS, 2000);
     }
 
+    lucide.createIcons();
     loadDashboard();
     connectWS();
   </script>

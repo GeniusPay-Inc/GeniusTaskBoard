@@ -88,6 +88,19 @@ Le port 8000 de l'API reste aussi publié directement (utile en debug local),
 mais en production seul le trafic via Caddy (443) doit être exposé au public
 — fermer le port 8000 au niveau du pare-feu du serveur.
 
+## Identité visuelle
+
+- Icônes : [Lucide](https://lucide.dev) chargé en CDN (`<i data-lucide="...">` +
+  `lucide.createIcons()`), aucune dépendance locale à installer.
+- Logo : le lockup GeniusPay (`Genius` + badge `Pay`) est recréé en HTML/CSS
+  directement dans les en-têtes (`.gp-logo`), pas une image — facile à retoucher.
+- Mascotte **Geni** : `app/static/shared/geni.js` + `geni.css`, servis via le
+  mount `/assets`. C'est le composant SVG fourni par GeniusPay, réécrit en JS
+  natif (le projet est un site statique FastAPI, sans Laravel/Alpine) :
+  `Geni.mount(el, { state: 'idle' | 'welcome' | 'thinking' | 'loading' | 'success', size: 'xs'..'xl' })`.
+  Utilisée aujourd'hui dans l'état vide de l'écran TV et la bannière « aucun
+  retard » du dashboard back-office.
+
 ## Structure
 
 Voir `docs/CONCEPTION.md` §5.
