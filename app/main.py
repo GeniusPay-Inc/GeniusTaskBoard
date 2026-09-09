@@ -1,5 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,6 +38,8 @@ app.include_router(ws.router)
 
 app.mount("/dashboard", StaticFiles(directory="app/static/dashboard", html=True), name="dashboard")
 app.mount("/admin", StaticFiles(directory="app/static/admin", html=True), name="admin")
+Path("app/static/uploads/avatars").mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="app/static/uploads"), name="uploads")
 
 
 @app.get("/health")

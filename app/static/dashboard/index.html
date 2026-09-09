@@ -5,119 +5,287 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TaskBoard — Écran de suivi</title>
 <style>
-  :root { color-scheme: dark; }
+  :root {
+    color-scheme: dark;
+    --bg: #06080f;
+    --panel: #0d1220;
+    --panel-2: #10192e;
+    --line: #1c2740;
+    --ink: #e8ecf7;
+    --muted: #6b7a9c;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --info: #38bdf8;
+  }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
-    margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    background: #0f1117; color: #f4f4f5; padding: clamp(12px, 2vw, 32px);
+    margin: 0; font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #101c3a 0%, transparent 60%),
+      radial-gradient(1000px 500px at 110% 10%, #1a1030 0%, transparent 55%),
+      var(--bg);
+    color: var(--ink); overflow-x: hidden;
   }
-  h1 { font-size: clamp(20px, 3vw, 32px); margin: 0 0 16px; }
-  .grid {
-    display: grid; gap: 16px;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  .wrap { padding: clamp(14px, 2vw, 28px) clamp(14px, 2.4vw, 34px) 0; padding-bottom: 70px; min-height: 100vh; }
+
+  /* ---------- Header ---------- */
+  header {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+    padding-bottom: clamp(14px, 2vw, 22px); border-bottom: 1px solid var(--line); margin-bottom: clamp(14px, 2vw, 22px);
   }
-  .card {
-    background: #1b1e27; border-radius: 14px; padding: 16px 18px;
-    border-left: 6px solid #3b82f6; position: relative; overflow: hidden;
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand .mark {
+    width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, #2563eb, #a855f7);
+    display: flex; align-items: center; justify-content: center; font-weight: 900; letter-spacing: -1px; font-size: 17px;
   }
-  .card.warning { border-left-color: #f59e0b; }
-  .card.danger { border-left-color: #ef4444; }
-  .card h3 { margin: 0 0 8px; font-size: clamp(15px, 1.6vw, 20px); }
-  .card .users { font-size: 13px; opacity: .8; margin-bottom: 10px; }
-  .timer { font-size: clamp(22px, 3vw, 34px); font-weight: 700; font-variant-numeric: tabular-nums; }
-  .status { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; opacity: .6; }
+  .brand h1 { margin: 0; font-size: clamp(18px, 2.4vw, 26px); letter-spacing: .04em; text-transform: uppercase; }
+  .brand .tag { font-size: 11px; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
+  .live {
+    display: flex; align-items: center; gap: 8px; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.4);
+    color: #fca5a5; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .08em;
+  }
+  .live .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--danger); animation: blink 1.2s infinite; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+  .clock { font-variant-numeric: tabular-nums; font-size: clamp(20px, 3vw, 30px); font-weight: 800; letter-spacing: .03em; }
+  .clock .date { display: block; text-align: right; font-size: 11px; font-weight: 500; color: var(--muted); text-transform: capitalize; }
+
+  /* ---------- Summary strip ---------- */
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: clamp(16px, 2.4vw, 26px); }
+  .sum-card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .sum-card .n { font-size: clamp(22px, 3vw, 32px); font-weight: 800; font-variant-numeric: tabular-nums; }
+  .sum-card .l { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .sum-card.ok .n { color: var(--ok); } .sum-card.info .n { color: var(--info); }
+  .sum-card.warn .n { color: var(--warn); } .sum-card.danger .n { color: var(--danger); }
+
+  /* ---------- Sections (façon board de cotes) ---------- */
+  .section { margin-bottom: clamp(16px, 2.4vw, 26px); }
+  .section-head {
+    display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 8px 8px 0 0;
+    font-weight: 800; letter-spacing: .1em; text-transform: uppercase; font-size: clamp(12px, 1.3vw, 14px);
+  }
+  .section-head .n-badge { margin-left: auto; background: rgba(255,255,255,.15); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+  .section-head.en_cours { background: linear-gradient(90deg, rgba(56,189,248,.22), transparent); color: var(--info); }
+  .section-head.en_retard { background: linear-gradient(90deg, rgba(239,68,68,.25), transparent); color: #fca5a5; }
+  .section-head.a_faire { background: linear-gradient(90deg, rgba(148,163,184,.18), transparent); color: #cbd5e1; }
+
+  .rows { background: var(--panel); border: 1px solid var(--line); border-radius: 0 0 10px 10px; overflow: hidden; }
+  .row {
+    display: grid; grid-template-columns: minmax(0,2.4fr) minmax(0,1.6fr) 150px 120px; gap: 14px; align-items: center;
+    padding: 12px 16px; border-bottom: 1px solid var(--line);
+  }
+  .row:last-child { border-bottom: none; }
+  .row:nth-child(odd) { background: var(--panel-2); }
+  .row.flash { animation: rowFlash 1.4s ease-out 2; }
+  @keyframes rowFlash { 0% { background: rgba(56,189,248,.35); } 100% { background: transparent; } }
+  .row .titre { font-weight: 700; font-size: clamp(13px, 1.5vw, 16px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .titre .desc { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); white-space: normal; margin-top: 2px; }
+  .people { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+  .avatar {
+    width: 26px; height: 26px; border-radius: 999px; flex: none; color: #06080f; font-size: 10.5px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; background-size: cover; background-position: center;
+  }
+  .people .names { font-size: 12.5px; color: #b7c3dd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .timer { font-variant-numeric: tabular-nums; font-weight: 800; font-size: clamp(18px, 2.2vw, 26px); text-align: right; }
+  .timer.ok { color: var(--ok); } .timer.warn { color: var(--warn); } .timer.danger { color: var(--danger); animation: blink 1s infinite; }
+  .timer.neutral { color: var(--muted); font-size: clamp(13px, 1.5vw, 15px); font-weight: 700; }
+  .bar-track { height: 5px; border-radius: 999px; background: #1a2440; overflow: hidden; margin-top: 6px; }
+  .bar-fill { height: 100%; border-radius: 999px; transition: width 1s linear; }
+  .bar-fill.ok { background: var(--ok); } .bar-fill.warn { background: var(--warn); } .bar-fill.danger { background: var(--danger); }
+  .empty-row { padding: 20px 16px; color: var(--muted); font-size: 13px; text-align: center; }
+
+  .board-empty { text-align: center; padding: 80px 20px; color: var(--muted); }
+  .board-empty .big { font-size: 40px; margin-bottom: 10px; }
+
+  /* ---------- Toast ---------- */
   .toast {
-    position: fixed; top: 16px; right: 16px; background: #22c55e; color: #04220f;
-    padding: 12px 18px; border-radius: 10px; font-weight: 600; opacity: 0;
-    transform: translateY(-10px); transition: all .3s ease; z-index: 10;
+    position: fixed; top: 20px; right: 20px; background: var(--ok); color: #04220f;
+    padding: 14px 22px; border-radius: 12px; font-weight: 800; opacity: 0; font-size: 15px;
+    transform: translateY(-14px); transition: all .3s ease; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,.4);
   }
   .toast.show { opacity: 1; transform: translateY(0); }
-  .toast.completed { background: #3b82f6; color: #06122b; }
-  .empty { opacity: .5; padding: 40px; text-align: center; }
+  .toast.completed { background: var(--info); color: #04182b; }
+  .toast.overdue { background: var(--danger); color: #2b0605; }
+
+  /* ---------- Ticker ---------- */
+  .ticker {
+    position: fixed; left: 0; right: 0; bottom: 0; height: 42px; background: #0a0f1c; border-top: 1px solid var(--line);
+    display: flex; align-items: center; overflow: hidden; z-index: 40;
+  }
+  .ticker .label {
+    flex: none; height: 100%; display: flex; align-items: center; padding: 0 14px; background: linear-gradient(90deg,#dc2626,#7c2d12);
+    font-weight: 800; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; z-index: 2;
+  }
+  .ticker-track { display: flex; white-space: nowrap; animation: scrollTicker 32s linear infinite; padding-left: 100%; }
+  .ticker-track span { padding: 0 28px; font-size: 13px; color: #c9d3ea; font-variant-numeric: tabular-nums; }
+  @keyframes scrollTicker { from { transform: translateX(0); } to { transform: translateX(-100%); } }
 </style>
 </head>
 <body>
-  <h1>TaskBoard — Tâches en cours</h1>
-  <div id="grid" class="grid"><p class="empty">Chargement…</p></div>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="mark">TB</div>
+        <div>
+          <h1>TaskBoard</h1>
+          <div class="tag">Écran de suivi en temps réel</div>
+        </div>
+      </div>
+      <div class="live"><span class="dot"></span>LIVE</div>
+      <div class="clock"><span id="clockTime">--:--:--</span><span class="date" id="clockDate"></span></div>
+    </header>
+
+    <div class="summary" id="summary"></div>
+
+    <div id="sections"></div>
+  </div>
+
   <div id="toast" class="toast"></div>
 
+  <div class="ticker">
+    <div class="label">⚡ Activité</div>
+    <div class="ticker-track" id="tickerTrack"><span>En attente d'activité…</span></div>
+  </div>
+
   <script>
-    const API_BASE = "";
     const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
-    const grid = document.getElementById("grid");
-    const toast = document.getElementById("toast");
+    const AVATAR_COLORS = ["#38bdf8", "#a855f7", "#f472b6", "#fbbf24", "#4ade80", "#22d3ee", "#fb7185"];
     let tasks = [];
+    let tickerEvents = [];
 
-    // Sons générés via Web Audio API (pas besoin de fichier externe)
-    function beep(freq = 880, duration = 180) {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = freq;
-      osc.type = "sine";
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      osc.start();
-      osc.stop(ctx.currentTime + duration / 1000);
+    function colorFor(id) {
+      let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+      return AVATAR_COLORS[h % AVATAR_COLORS.length];
     }
+    function initials(u) { return ((u.prenom[0] || "") + (u.nom[0] || "")).toUpperCase(); }
+    function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
 
+    function beep(freqs = [880], duration = 180, gap = 60) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        let t = ctx.currentTime;
+        freqs.forEach(f => {
+          const osc = ctx.createOscillator(); const gain = ctx.createGain();
+          osc.frequency.value = f; osc.type = "sine";
+          osc.connect(gain); gain.connect(ctx.destination);
+          gain.gain.setValueAtTime(0.001, t);
+          gain.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + duration / 1000);
+          osc.start(t); osc.stop(t + duration / 1000 + 0.02);
+          t += (duration + gap) / 1000;
+        });
+      } catch (e) {}
+    }
     function showToast(text, cls) {
+      const toast = document.getElementById("toast");
       toast.textContent = text;
       toast.className = "toast show " + (cls || "");
-      setTimeout(() => toast.classList.remove("show"), 3500);
+      setTimeout(() => toast.classList.remove("show"), 4000);
+    }
+    function pushTicker(text) {
+      const time = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      tickerEvents.unshift(`[${time}] ${text}`);
+      tickerEvents = tickerEvents.slice(0, 12);
+      document.getElementById("tickerTrack").innerHTML = tickerEvents.map(e => `<span>${escapeHtml(e)}</span>`).join("") || "<span>En attente d'activité…</span>";
     }
 
-    function formatRemaining(ms) {
-      if (ms <= 0) return "Temps écoulé";
-      const totalSec = Math.floor(ms / 1000);
-      const m = Math.floor(totalSec / 60);
-      const s = totalSec % 60;
-      return `${m}:${s.toString().padStart(2, "0")}`;
+    function tickClock() {
+      const now = new Date();
+      document.getElementById("clockTime").textContent = now.toLocaleTimeString("fr-FR");
+      document.getElementById("clockDate").textContent = now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+    }
+    setInterval(tickClock, 1000); tickClock();
+
+    function remaining(t) {
+      if (!t.date_fin_prevue) return { ms: null, pct: 0 };
+      const ms = new Date(t.date_fin_prevue) - new Date();
+      const totalMs = t.minutes_allouees * 60 * 1000;
+      const pct = Math.max(0, Math.min(100, (ms / totalMs) * 100));
+      return { ms, pct };
+    }
+    function fmt(ms) {
+      if (ms === null) return "";
+      if (ms <= 0) return "00:00";
+      const s = Math.floor(ms / 1000);
+      return `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+    }
+    function urgency(ms) { if (ms === null) return "neutral"; if (ms <= 0) return "danger"; if (ms < 5 * 60 * 1000) return "warn"; return "ok"; }
+
+    function rowHtml(t) {
+      const { ms, pct } = remaining(t);
+      const cls = urgency(ms);
+      const av = (t.assigned_users || []).map(u => `<div class="avatar" style="${u.photo_url ? `background-image:url('${u.photo_url}')` : `background:${colorFor(u.id)}`}" title="${u.prenom} ${u.nom}">${u.photo_url ? "" : initials(u)}</div>`).join("");
+      const names = (t.assigned_users || []).map(u => `${u.prenom} ${u.nom}`).join(", ") || "Non affilié";
+      return `
+        <div class="row" data-id="${t.id}">
+          <div class="titre">${escapeHtml(t.titre)}${t.description ? `<span class="desc">${escapeHtml(t.description)}</span>` : ""}</div>
+          <div class="people">${av}<span class="names">${escapeHtml(names)}</span></div>
+          <div>
+            <div class="timer ${cls}" data-fin="${t.date_fin_prevue || ""}" data-minutes="${t.minutes_allouees}">
+              ${t.date_fin_prevue ? fmt(ms) : t.minutes_allouees + " min"}
+            </div>
+            ${t.date_fin_prevue ? `<div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div>` : ""}
+          </div>
+          <div class="timer neutral" style="text-align:right;">${t.statut.replace("_", " ")}</div>
+        </div>`;
+    }
+
+    function sectionHtml(key, label, items) {
+      if (!items.length) return "";
+      return `
+        <div class="section">
+          <div class="section-head ${key}">${label}<span class="n-badge">${items.length}</span></div>
+          <div class="rows">${items.map(rowHtml).join("")}</div>
+        </div>`;
     }
 
     function render() {
-      if (!tasks.length) {
-        grid.innerHTML = '<p class="empty">Aucune tâche en cours pour le moment.</p>';
-        return;
-      }
-      grid.innerHTML = tasks.map(t => {
-        const names = (t.assigned_users || []).map(u => `${u.prenom} ${u.nom}`).join(", ") || "Non affilié";
-        const remainingMs = t.date_fin_prevue ? (new Date(t.date_fin_prevue) - new Date()) : null;
-        let cls = "";
-        if (remainingMs !== null) {
-          if (remainingMs <= 0) cls = "danger";
-          else if (remainingMs < 5 * 60 * 1000) cls = "warning";
-        }
-        return `
-          <div class="card ${cls}" data-id="${t.id}">
-            <span class="status">${t.statut.replace("_", " ")}</span>
-            <h3>${t.titre}</h3>
-            <div class="users">${names}</div>
-            <div class="timer" data-fin="${t.date_fin_prevue || ""}">
-              ${remainingMs !== null ? formatRemaining(remainingMs) : t.minutes_allouees + " min allouées"}
-            </div>
-          </div>`;
-      }).join("");
+      const enCours = tasks.filter(t => t.statut === "en_cours");
+      const enRetard = tasks.filter(t => t.statut === "en_retard");
+      const aFaire = tasks.filter(t => t.statut === "a_faire");
+
+      document.getElementById("summary").innerHTML = `
+        <div class="sum-card info"><div class="n">${enCours.length}</div><div class="l">En cours</div></div>
+        <div class="sum-card danger"><div class="n">${enRetard.length}</div><div class="l">En retard</div></div>
+        <div class="sum-card">
+          <div class="n">${aFaire.length}</div><div class="l">À venir</div></div>
+        <div class="sum-card ok"><div class="n">${tasks.length}</div><div class="l">Total affiché</div></div>`;
+
+      const sections = document.getElementById("sections");
+      const html = [
+        sectionHtml("en_retard", "🔴 En retard", enRetard),
+        sectionHtml("en_cours", "🔵 En cours", enCours),
+        sectionHtml("a_faire", "⚪ À venir", aFaire),
+      ].join("");
+      sections.innerHTML = html || `<div class="board-empty"><div class="big">🌙</div>Aucune tâche en cours pour le moment.</div>`;
     }
 
     function tickTimers() {
       document.querySelectorAll(".timer[data-fin]").forEach(el => {
         const fin = el.getAttribute("data-fin");
         if (!fin) return;
-        const remainingMs = new Date(fin) - new Date();
-        el.textContent = formatRemaining(remainingMs);
-        const card = el.closest(".card");
-        card.classList.toggle("danger", remainingMs <= 0);
-        card.classList.toggle("warning", remainingMs > 0 && remainingMs < 5 * 60 * 1000);
+        const ms = new Date(fin) - new Date();
+        const cls = urgency(ms);
+        el.className = "timer " + cls;
+        el.textContent = fmt(ms);
+        const bar = el.parentElement.querySelector(".bar-fill");
+        if (bar) {
+          const totalMs = parseFloat(el.getAttribute("data-minutes")) * 60 * 1000;
+          bar.style.width = Math.max(0, Math.min(100, (ms / totalMs) * 100)) + "%";
+          bar.className = "bar-fill " + cls;
+        }
       });
     }
     setInterval(tickTimers, 1000);
 
     async function loadDashboard() {
-      const res = await fetch(API_BASE + "/api/v1/dashboard");
+      const res = await fetch("/api/v1/dashboard");
       const data = await res.json();
-      tasks = [...data.en_cours, ...data.a_faire, ...data.en_retard];
+      tasks = [...data.en_retard, ...data.en_cours, ...data.a_faire];
       render();
     }
 
@@ -125,16 +293,16 @@
       const ws = new WebSocket(WS_URL);
       ws.onmessage = (evt) => {
         const msg = JSON.parse(evt.data);
-        if (msg.type === "task.created") {
-          showToast(`Nouvelle tâche : ${msg.task.titre}`, "");
-          beep(880, 200);
-        } else if (msg.type === "task.completed") {
-          showToast(`Tâche terminée : ${msg.task.titre}`, "completed");
-          beep(520, 250);
-        }
-        loadDashboard();
+        if (msg.type === "task.created") { showToast(`🆕 Nouvelle tâche : ${msg.task.titre}`, ""); pushTicker(`Nouvelle tâche créée — ${msg.task.titre}`); beep([880, 1046]); }
+        else if (msg.type === "task.completed") { showToast(`✅ Tâche terminée : ${msg.task.titre}`, "completed"); pushTicker(`Tâche terminée — ${msg.task.titre}`); beep([660, 880, 1318], 150, 40); }
+        else if (msg.type === "task.overdue") { showToast(`⏰ Tâche en retard : ${msg.task.titre}`, "overdue"); pushTicker(`Tâche en retard — ${msg.task.titre}`); beep([420, 300], 260, 80); }
+        else if (msg.type === "task.started") { pushTicker(`Tâche démarrée — ${msg.task.titre}`); }
+        loadDashboard().then(() => {
+          const row = document.querySelector(`.row[data-id="${msg.task && msg.task.id}"]`);
+          if (row) { row.classList.add("flash"); setTimeout(() => row.classList.remove("flash"), 2900); }
+        });
       };
-      ws.onclose = () => setTimeout(connectWS, 2000); // reconnexion auto
+      ws.onclose = () => setTimeout(connectWS, 2000);
     }
 
     loadDashboard();

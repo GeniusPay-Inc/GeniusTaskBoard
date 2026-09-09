@@ -16,12 +16,17 @@ docker compose up --build
 ```
 
 - API : http://localhost:8000 (doc interactive sur `/docs`)
-- Back-office (créer personnel/tâches, piloter) : http://localhost:8000/admin
+- Back-office : http://localhost:8000/admin — menu **Dashboard** (récapitulatif,
+  alertes de retard, charge de travail), **Tâches** (Kanban glisser-déposer) et
+  **Employés** (personnel + photo de profil)
 - Écran de suivi (dashboard TV) : http://localhost:8000/dashboard
 - Santé : http://localhost:8000/health
 
 Les tables sont créées automatiquement au démarrage en dev (`init_db`). Pour la
 prod, mettre en place Alembic (`alembic init alembic`) et retirer `init_db()`.
+Les photos de profil sont stockées sur disque dans `app/static/uploads/`
+(non versionné) — prévoir un stockage objet (S3, etc.) et un volume persistant
+si l'API tourne sur plusieurs instances ou est redéployée sans volume partagé.
 
 ## Clé API
 
@@ -55,6 +60,33 @@ les mises à jour temps réel et entendre les alertes. Une tâche `en_cours` don
 l'échéance est dépassée passe automatiquement en `en_retard` (vérification
 toutes les 15s, voir `app/overdue_worker.py`) et diffuse l'événement
 `task.overdue`.
+
+## Déploiement — task.geniuspay.tech
+
+Le domaine `task.geniuspay.tech` est prévu pour l'instance de production. Le
+`docker-compose.yml` inclut un service **Caddy** qui reçoit le trafic sur les
+ports 80/443, obtient et renouvelle automatiquement le certificat TLS
+(Let's Encrypt) pour ce domaine, et reverse-proxy vers l'API interne.
+
+1. Pointer un enregistrement DNS `A` (et `AAAA` si IPv6) de `task.geniuspay.tech`
+   vers l'IP publique du serveur.
+2. Sur le serveur :
+   ```bash
+   cp .env.example .env
+   # vérifier/ajuster dans .env :
+   #   DOMAIN=task.geniuspay.tech
+   #   CORS_ORIGINS=...,https://task.geniuspay.tech
+   #   API_KEY, JWT_SECRET → générer des valeurs fortes (ne pas garder les defaults)
+   docker compose up --build -d
+   ```
+3. Une fois le certificat émis (quelques secondes après le premier accès) :
+   - Back-office : https://task.geniuspay.tech/admin
+   - Écran de suivi (TV) : https://task.geniuspay.tech/dashboard
+   - API / docs : https://task.geniuspay.tech/docs
+
+Le port 8000 de l'API reste aussi publié directement (utile en debug local),
+mais en production seul le trafic via Caddy (443) doit être exposé au public
+— fermer le port 8000 au niveau du pare-feu du serveur.
 
 ## Structure
 

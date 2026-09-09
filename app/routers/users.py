@@ -1,6 +1,8 @@
+import time
 import uuid
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +12,10 @@ from app.schemas import UserCreate, UserOut, UserUpdate
 from app.security import require_api_key
 
 router = APIRouter(prefix="/api/v1/users", tags=["personnel"])
+
+AVATAR_DIR = Path("app/static/uploads/avatars")
+AVATAR_CONTENT_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+AVATAR_MAX_BYTES = 5 * 1024 * 1024  # 5 Mo
 
 
 @router.post("", response_model=UserOut, status_code=201, dependencies=[Depends(require_api_key)])
@@ -56,6 +62,30 @@ async def archive_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     if not user:
         raise HTTPException(404, "Personne introuvable")
     user.statut = UserStatus.archive
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@router.post("/{user_id}/photo", response_model=UserOut, dependencies=[Depends(require_api_key)])
+async def upload_user_photo(user_id: uuid.UUID, file: UploadFile, db: AsyncSession = Depends(get_db)):
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "Personne introuvable")
+
+    ext = AVATAR_CONTENT_TYPES.get(file.content_type)
+    if not ext:
+        raise HTTPException(400, "Format d'image non supporté (jpeg, png ou webp uniquement)")
+
+    data = await file.read()
+    if len(data) > AVATAR_MAX_BYTES:
+        raise HTTPException(400, "Image trop volumineuse (5 Mo maximum)")
+
+    AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"{user.id}.{ext}"
+    (AVATAR_DIR / filename).write_bytes(data)
+
+    user.photo_url = f"/uploads/avatars/{filename}?v={int(time.time())}"
     await db.commit()
     await db.refresh(user)
     return user
