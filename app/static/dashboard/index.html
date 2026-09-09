@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TaskBoard — Écran de suivi</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #0f1117; color: #f4f4f5; padding: clamp(12px, 2vw, 32px);
+  }
+  h1 { font-size: clamp(20px, 3vw, 32px); margin: 0 0 16px; }
+  .grid {
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+  .card {
+    background: #1b1e27; border-radius: 14px; padding: 16px 18px;
+    border-left: 6px solid #3b82f6; position: relative; overflow: hidden;
+  }
+  .card.warning { border-left-color: #f59e0b; }
+  .card.danger { border-left-color: #ef4444; }
+  .card h3 { margin: 0 0 8px; font-size: clamp(15px, 1.6vw, 20px); }
+  .card .users { font-size: 13px; opacity: .8; margin-bottom: 10px; }
+  .timer { font-size: clamp(22px, 3vw, 34px); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .status { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; opacity: .6; }
+  .toast {
+    position: fixed; top: 16px; right: 16px; background: #22c55e; color: #04220f;
+    padding: 12px 18px; border-radius: 10px; font-weight: 600; opacity: 0;
+    transform: translateY(-10px); transition: all .3s ease; z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.completed { background: #3b82f6; color: #06122b; }
+  .empty { opacity: .5; padding: 40px; text-align: center; }
+</style>
+</head>
+<body>
+  <h1>TaskBoard — Tâches en cours</h1>
+  <div id="grid" class="grid"><p class="empty">Chargement…</p></div>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const API_BASE = "";
+    const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
+    const grid = document.getElementById("grid");
+    const toast = document.getElementById("toast");
+    let tasks = [];
+
+    // Sons générés via Web Audio API (pas besoin de fichier externe)
+    function beep(freq = 880, duration = 180) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      osc.start();
+      osc.stop(ctx.currentTime + duration / 1000);
+    }
+
+    function showToast(text, cls) {
+      toast.textContent = text;
+      toast.className = "toast show " + (cls || "");
+      setTimeout(() => toast.classList.remove("show"), 3500);
+    }
+
+    function formatRemaining(ms) {
+      if (ms <= 0) return "Temps écoulé";
+      const totalSec = Math.floor(ms / 1000);
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return `${m}:${s.toString().padStart(2, "0")}`;
+    }
+
+    function render() {
+      if (!tasks.length) {
+        grid.innerHTML = '<p class="empty">Aucune tâche en cours pour le moment.</p>';
+        return;
+      }
+      grid.innerHTML = tasks.map(t => {
+        const names = (t.assigned_users || []).map(u => `${u.prenom} ${u.nom}`).join(", ") || "Non affilié";
+        const remainingMs = t.date_fin_prevue ? (new Date(t.date_fin_prevue) - new Date()) : null;
+        let cls = "";
+        if (remainingMs !== null) {
+          if (remainingMs <= 0) cls = "danger";
+          else if (remainingMs < 5 * 60 * 1000) cls = "warning";
+        }
+        return `
+          <div class="card ${cls}" data-id="${t.id}">
+            <span class="status">${t.statut.replace("_", " ")}</span>
+            <h3>${t.titre}</h3>
+            <div class="users">${names}</div>
+            <div class="timer" data-fin="${t.date_fin_prevue || ""}">
+              ${remainingMs !== null ? formatRemaining(remainingMs) : t.minutes_allouees + " min allouées"}
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    function tickTimers() {
+      document.querySelectorAll(".timer[data-fin]").forEach(el => {
+        const fin = el.getAttribute("data-fin");
+        if (!fin) return;
+        const remainingMs = new Date(fin) - new Date();
+        el.textContent = formatRemaining(remainingMs);
+        const card = el.closest(".card");
+        card.classList.toggle("danger", remainingMs <= 0);
+        card.classList.toggle("warning", remainingMs > 0 && remainingMs < 5 * 60 * 1000);
+      });
+    }
+    setInterval(tickTimers, 1000);
+
+    async function loadDashboard() {
+      const res = await fetch(API_BASE + "/api/v1/dashboard");
+      const data = await res.json();
+      tasks = [...data.en_cours, ...data.a_faire, ...data.en_retard];
+      render();
+    }
+
+    function connectWS() {
+      const ws = new WebSocket(WS_URL);
+      ws.onmessage = (evt) => {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === "task.created") {
+          showToast(`Nouvelle tâche : ${msg.task.titre}`, "");
+          beep(880, 200);
+        } else if (msg.type === "task.completed") {
+          showToast(`Tâche terminée : ${msg.task.titre}`, "completed");
+          beep(520, 250);
+        }
+        loadDashboard();
+      };
+      ws.onclose = () => setTimeout(connectWS, 2000); // reconnexion auto
+    }
+
+    loadDashboard();
+    connectWS();
+  </script>
+</body>
+</html>

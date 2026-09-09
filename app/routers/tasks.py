@@ -1,0 +1,140 @@
+import uuid
+from datetime import datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.database import get_db
+from app.models import Task, TaskAssignment, TaskStatus, User
+from app.schemas import TaskAssign, TaskCreate, TaskOut, TaskUpdate
+from app.websocket_manager import manager
+
+router = APIRouter(prefix="/api/v1/tasks", tags=["tâches"])
+
+
+async def _get_task_with_users(db: AsyncSession, task_id: uuid.UUID) -> Task:
+    query = (
+        select(Task)
+        .where(Task.id == task_id)
+        .options(selectinload(Task.assignments).selectinload(TaskAssignment.user))
+    )
+    result = await db.execute(query)
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(404, "Tâche introuvable")
+    return task
+
+
+def _to_out(task: Task) -> TaskOut:
+    out = TaskOut.model_validate(task)
+    out.assigned_users = [a.user for a in task.assignments]
+    return out
+
+
+async def _broadcast(event_type: str, task: Task) -> None:
+    await manager.broadcast({"type": event_type, "task": _to_out(task).model_dump(mode="json")})
+
+
+@router.post("", response_model=TaskOut, status_code=201)
+async def create_task(payload: TaskCreate, db: AsyncSession = Depends(get_db)):
+    data = payload.model_dump(exclude={"user_ids"})
+    task = Task(**data)
+    db.add(task)
+    await db.flush()
+
+    for user_id in payload.user_ids:
+        user = await db.get(User, user_id)
+        if not user:
+            raise HTTPException(404, f"Utilisateur {user_id} introuvable")
+        db.add(TaskAssignment(task_id=task.id, user_id=user_id))
+
+    await db.commit()
+    task = await _get_task_with_users(db, task.id)
+    await _broadcast("task.created", task)
+    return _to_out(task)
+
+
+@router.get("", response_model=list[TaskOut])
+async def list_tasks(
+    statut: TaskStatus | None = None,
+    user_id: uuid.UUID | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Task).options(selectinload(Task.assignments).selectinload(TaskAssignment.user))
+    if statut:
+        query = query.where(Task.statut == statut)
+    if user_id:
+        query = query.join(TaskAssignment).where(TaskAssignment.user_id == user_id)
+    result = await db.execute(query.order_by(Task.created_at.desc()))
+    tasks = result.scalars().unique().all()
+    return [_to_out(t) for t in tasks]
+
+
+@router.get("/{task_id}", response_model=TaskOut)
+async def get_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    task = await _get_task_with_users(db, task_id)
+    return _to_out(task)
+
+
+@router.patch("/{task_id}", response_model=TaskOut)
+async def update_task(task_id: uuid.UUID, payload: TaskUpdate, db: AsyncSession = Depends(get_db)):
+    task = await _get_task_with_users(db, task_id)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(task, field, value)
+    await db.commit()
+    task = await _get_task_with_users(db, task_id)
+    await _broadcast("task.updated", task)
+    return _to_out(task)
+
+
+@router.post("/{task_id}/assign", response_model=TaskOut)
+async def assign_task(task_id: uuid.UUID, payload: TaskAssign, db: AsyncSession = Depends(get_db)):
+    task = await _get_task_with_users(db, task_id)
+    existing_ids = {a.user_id for a in task.assignments}
+    for user_id in payload.user_ids:
+        if user_id in existing_ids:
+            continue
+        user = await db.get(User, user_id)
+        if not user:
+            raise HTTPException(404, f"Utilisateur {user_id} introuvable")
+        db.add(TaskAssignment(task_id=task.id, user_id=user_id))
+    await db.commit()
+    task = await _get_task_with_users(db, task_id)
+    await _broadcast("task.updated", task)
+    return _to_out(task)
+
+
+@router.post("/{task_id}/start", response_model=TaskOut)
+async def start_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    task = await _get_task_with_users(db, task_id)
+    now = datetime.now(timezone.utc)
+    task.date_debut = now
+    task.date_fin_prevue = now + timedelta(minutes=task.minutes_allouees)
+    task.statut = TaskStatus.en_cours
+    await db.commit()
+    task = await _get_task_with_users(db, task_id)
+    await _broadcast("task.started", task)
+    return _to_out(task)
+
+
+@router.post("/{task_id}/complete", response_model=TaskOut)
+async def complete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    task = await _get_task_with_users(db, task_id)
+    task.date_fin_reelle = datetime.now(timezone.utc)
+    task.statut = TaskStatus.terminee
+    await db.commit()
+    task = await _get_task_with_users(db, task_id)
+    await _broadcast("task.completed", task)
+    return _to_out(task)
+
+
+@router.post("/{task_id}/archive", response_model=TaskOut)
+async def archive_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    task = await _get_task_with_users(db, task_id)
+    task.statut = TaskStatus.archivee
+    await db.commit()
+    task = await _get_task_with_users(db, task_id)
+    await _broadcast("task.updated", task)
+    return _to_out(task)
