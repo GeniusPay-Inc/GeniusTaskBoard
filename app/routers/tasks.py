@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models import Task, TaskAssignment, TaskStatus, User
 from app.schemas import TaskAssign, TaskCreate, TaskOut, TaskUpdate
+from app.security import require_api_key
 from app.websocket_manager import manager
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["tâches"])
@@ -37,7 +38,7 @@ async def _broadcast(event_type: str, task: Task) -> None:
     await manager.broadcast({"type": event_type, "task": _to_out(task).model_dump(mode="json")})
 
 
-@router.post("", response_model=TaskOut, status_code=201)
+@router.post("", response_model=TaskOut, status_code=201, dependencies=[Depends(require_api_key)])
 async def create_task(payload: TaskCreate, db: AsyncSession = Depends(get_db)):
     data = payload.model_dump(exclude={"user_ids"})
     task = Task(**data)
@@ -78,7 +79,7 @@ async def get_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     return _to_out(task)
 
 
-@router.patch("/{task_id}", response_model=TaskOut)
+@router.patch("/{task_id}", response_model=TaskOut, dependencies=[Depends(require_api_key)])
 async def update_task(task_id: uuid.UUID, payload: TaskUpdate, db: AsyncSession = Depends(get_db)):
     task = await _get_task_with_users(db, task_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
@@ -89,7 +90,7 @@ async def update_task(task_id: uuid.UUID, payload: TaskUpdate, db: AsyncSession 
     return _to_out(task)
 
 
-@router.post("/{task_id}/assign", response_model=TaskOut)
+@router.post("/{task_id}/assign", response_model=TaskOut, dependencies=[Depends(require_api_key)])
 async def assign_task(task_id: uuid.UUID, payload: TaskAssign, db: AsyncSession = Depends(get_db)):
     task = await _get_task_with_users(db, task_id)
     existing_ids = {a.user_id for a in task.assignments}
@@ -106,7 +107,7 @@ async def assign_task(task_id: uuid.UUID, payload: TaskAssign, db: AsyncSession 
     return _to_out(task)
 
 
-@router.post("/{task_id}/start", response_model=TaskOut)
+@router.post("/{task_id}/start", response_model=TaskOut, dependencies=[Depends(require_api_key)])
 async def start_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     task = await _get_task_with_users(db, task_id)
     now = datetime.now(timezone.utc)
@@ -119,7 +120,7 @@ async def start_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     return _to_out(task)
 
 
-@router.post("/{task_id}/complete", response_model=TaskOut)
+@router.post("/{task_id}/complete", response_model=TaskOut, dependencies=[Depends(require_api_key)])
 async def complete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     task = await _get_task_with_users(db, task_id)
     task.date_fin_reelle = datetime.now(timezone.utc)
@@ -130,7 +131,7 @@ async def complete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     return _to_out(task)
 
 
-@router.post("/{task_id}/archive", response_model=TaskOut)
+@router.post("/{task_id}/archive", response_model=TaskOut, dependencies=[Depends(require_api_key)])
 async def archive_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     task = await _get_task_with_users(db, task_id)
     task.statut = TaskStatus.archivee
