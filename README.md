@@ -16,12 +16,17 @@ docker compose up --build
 ```
 
 - API : http://localhost:8000 (doc interactive sur `/docs`)
-- Back-office (créer personnel/tâches, piloter) : http://localhost:8000/admin
+- Back-office : http://localhost:8000/admin — menu **Dashboard** (récapitulatif,
+  alertes de retard, charge de travail), **Tâches** (Kanban glisser-déposer) et
+  **Employés** (personnel + photo de profil)
 - Écran de suivi (dashboard TV) : http://localhost:8000/dashboard
 - Santé : http://localhost:8000/health
 
 Les tables sont créées automatiquement au démarrage en dev (`init_db`). Pour la
 prod, mettre en place Alembic (`alembic init alembic`) et retirer `init_db()`.
+Les photos de profil sont stockées sur disque dans `app/static/uploads/`
+(non versionné) — prévoir un stockage objet (S3, etc.) et un volume persistant
+si l'API tourne sur plusieurs instances ou est redéployée sans volume partagé.
 
 ## Clé API
 

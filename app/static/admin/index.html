@@ -25,6 +25,7 @@
     background: var(--bg); color: var(--ink);
   }
   a { color: var(--brand); }
+  img { max-width: none; }
 
   /* ---------- Header ---------- */
   header {
@@ -54,7 +55,7 @@
   button.primary:hover { background: var(--brand-dark); }
   button.ghost { background: #eef1f5; color: var(--ink); padding: 8px 14px; font-size: 13px; font-weight: 600; }
   button.subtle { background: transparent; color: var(--muted); padding: 4px 8px; font-size: 12px; }
-  button.danger-text { background: transparent; color: var(--danger); padding: 4px 8px; font-size: 12px; }
+  button.danger-text { background: transparent; color: var(--danger); padding: 4px 8px; font-size: 12px; font-weight: 600; }
   button.small { padding: 5px 9px; font-size: 12px; font-weight: 600; }
   button:disabled { opacity: .5; cursor: not-allowed; }
 
@@ -74,27 +75,59 @@
     padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; width: 220px;
   }
 
-  /* ---------- Toolbar ---------- */
-  .toolbar {
-    display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
-    padding: 14px clamp(12px, 2vw, 24px) 4px;
+  /* ---------- App shell : sidebar + contenu ---------- */
+  .shell { display: flex; align-items: flex-start; }
+  nav.sidebar {
+    width: 208px; flex: none; padding: 16px 10px; position: sticky; top: 57px;
+    height: calc(100vh - 57px); display: flex; flex-direction: column; gap: 2px;
   }
-  .stats { display: flex; gap: 8px; flex-wrap: wrap; }
-  .stat-chip {
-    background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px;
-    font-size: 12px; font-weight: 600; color: var(--muted); display: flex; gap: 6px; align-items: center;
+  nav.sidebar button.nav-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent;
+    padding: 10px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 600; color: var(--muted);
   }
-  .stat-chip b { color: var(--ink); font-size: 13px; }
-  .toolbar .actions { display: flex; gap: 8px; }
+  nav.sidebar button.nav-item .ic { font-size: 16px; width: 20px; text-align: center; }
+  nav.sidebar button.nav-item:hover { background: rgba(9,30,66,.06); color: var(--ink); }
+  nav.sidebar button.nav-item.active { background: #e8edff; color: var(--brand-dark); }
+  main.content { flex: 1; min-width: 0; padding: 18px clamp(12px, 2vw, 24px) 40px; }
 
-  /* ---------- Board ---------- */
-  .board {
-    display: flex; gap: 14px; padding: 12px clamp(12px, 2vw, 24px) 24px; overflow-x: auto;
-    align-items: flex-start; min-height: 60vh;
+  .view { display: none; }
+  .view.active { display: block; }
+  .view-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .view-head h2 { margin: 0; font-size: 19px; }
+  .view-head p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+
+  /* ---------- Dashboard KPIs ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 26px; }
+  .kpi { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .kpi .n { font-size: 30px; font-weight: 800; line-height: 1; }
+  .kpi .l { font-size: 12px; color: var(--muted); margin-top: 6px; font-weight: 600; }
+  .kpi.danger .n { color: var(--danger); } .kpi.ok .n { color: var(--ok); } .kpi.info .n { color: var(--brand); }
+
+  .section-title { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 12px; }
+
+  .alert-card {
+    background: #fff; border: 1px solid #fecaca; border-left: 5px solid var(--danger); border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;
   }
+  .alert-card .left .title { font-size: 17px; font-weight: 800; }
+  .alert-card .left .desc { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .alert-card .mid { display: flex; gap: 28px; flex-wrap: wrap; }
+  .alert-card .field .l { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+  .alert-card .field .v { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  .alert-card .field.retard .v { color: var(--danger); font-size: 22px; font-variant-numeric: tabular-nums; }
+  .empty-ok { background: #f0fdf5; border: 1px solid #bbf0cf; color: #166534; border-radius: 12px; padding: 16px 18px; font-weight: 600; font-size: 13.5px; margin-bottom: 26px; }
+
+  .workload-row { display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+  .workload-row .name { font-weight: 700; font-size: 13.5px; flex: 1; }
+  .workload-row .bar-track { flex: 2; height: 8px; background: #eef1f5; border-radius: 999px; overflow: hidden; }
+  .workload-row .bar-fill { height: 100%; background: var(--brand); border-radius: 999px; }
+  .workload-row .count { font-size: 12px; color: var(--muted); font-weight: 700; width: 70px; text-align: right; }
+
+  /* ---------- Board (Tâches) ---------- */
+  .board { display: flex; gap: 14px; overflow-x: auto; align-items: flex-start; padding-bottom: 10px; }
   .column {
     background: var(--column-bg); border-radius: 12px; padding: 10px; width: 300px; flex: 0 0 300px;
-    display: flex; flex-direction: column; max-height: calc(100vh - 190px);
+    display: flex; flex-direction: column; max-height: calc(100vh - 230px);
   }
   .column.drag-over { outline: 2px dashed var(--brand); outline-offset: -2px; }
   .column-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 10px; }
@@ -123,6 +156,7 @@
   .avatar {
     width: 24px; height: 24px; border-radius: 999px; color: #fff; font-size: 10px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; border: 2px solid var(--card-bg); margin-left: -8px;
+    background-size: cover; background-position: center; flex: none;
   }
   .avatar:first-child { margin-left: 0; }
   .time-chip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; font-variant-numeric: tabular-nums; }
@@ -138,6 +172,37 @@
     font-weight: 600; border-radius: 8px;
   }
   .add-card-btn:hover { background: rgba(9,30,66,.06); color: var(--ink); }
+
+  /* ---------- Employés ---------- */
+  .employee-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+  .employee-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px 16px; text-align: center; position: relative; }
+  .employee-card.archive { opacity: .55; }
+  .employee-card .badge-status {
+    position: absolute; top: 12px; right: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 999px; background: #f3f4f6; color: var(--muted);
+  }
+  .employee-card .badge-status.actif { background: #dcfce7; color: #166534; }
+  .photo-wrap { position: relative; width: 76px; height: 76px; margin: 0 auto 12px; }
+  .avatar-lg {
+    width: 76px; height: 76px; border-radius: 999px; color: #fff; font-size: 24px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; background-size: cover; background-position: center;
+  }
+  .photo-wrap .cam-btn {
+    position: absolute; bottom: -2px; right: -2px; width: 28px; height: 28px; border-radius: 999px; background: #fff;
+    border: 2px solid var(--bg); display: flex; align-items: center; justify-content: center; font-size: 13px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.25); cursor: pointer;
+  }
+  .employee-card .name { font-weight: 700; font-size: 14.5px; margin-top: 2px; }
+  .employee-card .role { font-size: 12px; color: var(--muted); margin-top: 2px; margin-bottom: 10px; }
+  .employee-card .load { font-size: 11.5px; color: var(--muted); margin-bottom: 10px; }
+  .employee-card .load b { color: var(--ink); }
+  .add-employee-card {
+    border: 2px dashed var(--border); border-radius: 14px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 6px; color: var(--muted); font-weight: 700; font-size: 13px; min-height: 190px;
+    background: transparent;
+  }
+  .add-employee-card:hover { background: rgba(9,30,66,.04); color: var(--ink); }
+  .add-employee-card .plus { font-size: 28px; }
 
   /* ---------- Modal ---------- */
   .modal-backdrop {
@@ -155,23 +220,11 @@
   .modal .checks { display: flex; flex-wrap: wrap; gap: 8px; max-height: 140px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
   .modal .checks label { display: flex; align-items: center; gap: 6px; font-weight: 400; font-size: 13px; color: var(--ink); margin: 0; }
   .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-
-  /* ---------- Team panel ---------- */
-  #teamPanel {
-    position: fixed; top: 0; right: 0; bottom: 0; width: min(320px, 90vw); background: #fff; z-index: 90;
-    box-shadow: -4px 0 16px rgba(9,30,66,.15); transform: translateX(100%); transition: transform .25s ease;
-    display: flex; flex-direction: column;
+  .photo-picker { display: flex; align-items: center; gap: 12px; }
+  .photo-picker .preview {
+    width: 56px; height: 56px; border-radius: 999px; background: #eef1f5 center/cover no-repeat;
+    display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 20px; flex: none;
   }
-  #teamPanel.open { transform: translateX(0); }
-  #teamPanel .panel-head { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid var(--border); }
-  #teamPanel .panel-head h2 { font-size: 15px; margin: 0; }
-  #teamPanel .panel-body { padding: 14px 16px; overflow-y: auto; flex: 1; }
-  .person-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f1f2f5; }
-  .person-row .info { flex: 1; }
-  .person-row .name { font-size: 13.5px; font-weight: 600; }
-  .person-row .role { font-size: 11.5px; color: var(--muted); }
-  #overlay-scrim { position: fixed; inset: 0; background: rgba(9,30,66,.4); z-index: 80; }
-  #overlay-scrim[hidden] { display: none; }
 
   .toast {
     position: fixed; bottom: 20px; right: 20px; background: #16a34a; color: #fff;
@@ -182,6 +235,11 @@
   .toast.completed { background: #2563eb; }
   .toast.overdue { background: #dc2626; }
 
+  @media (max-width: 860px) {
+    nav.sidebar { position: static; height: auto; width: 100%; flex-direction: row; overflow-x: auto; padding: 8px clamp(12px,2vw,24px); }
+    .shell { flex-direction: column; }
+    nav.sidebar button.nav-item { flex: none; width: auto; white-space: nowrap; }
+  }
   @media (max-width: 640px) {
     .column { width: 82vw; flex-basis: 82vw; }
   }
@@ -214,15 +272,46 @@
     </form>
   </div>
 
-  <div class="toolbar">
-    <div class="stats" id="stats"></div>
-    <div class="actions">
-      <button class="ghost" id="openTeamBtn">👥 Personnel</button>
-      <button class="primary" id="openTaskModalBtn">+ Nouvelle tâche</button>
-    </div>
-  </div>
+  <div class="shell">
+    <nav class="sidebar">
+      <button class="nav-item" data-view="dashboard"><span class="ic">📊</span> Dashboard</button>
+      <button class="nav-item" data-view="tasks"><span class="ic">📋</span> Tâches</button>
+      <button class="nav-item" data-view="employees"><span class="ic">👥</span> Employés</button>
+    </nav>
 
-  <div class="board" id="board"></div>
+    <main class="content">
+
+      <!-- ================= Dashboard ================= -->
+      <section class="view" id="view-dashboard">
+        <div class="view-head">
+          <div><h2>Dashboard récapitulatif</h2><p>Vue d'ensemble de l'activité en cours</p></div>
+        </div>
+        <div class="kpis" id="kpis"></div>
+        <div class="section-title">Alertes — tâches en retard</div>
+        <div id="alerts"></div>
+        <div class="section-title" style="margin-top:8px;">Charge de travail (personnel actif)</div>
+        <div id="workload"></div>
+      </section>
+
+      <!-- ================= Tâches ================= -->
+      <section class="view" id="view-tasks">
+        <div class="view-head">
+          <div><h2>Tâches</h2><p>Glissez une carte pour démarrer ou terminer une tâche</p></div>
+          <button class="primary" id="openTaskModalBtn">+ Nouvelle tâche</button>
+        </div>
+        <div class="board" id="board"></div>
+      </section>
+
+      <!-- ================= Employés ================= -->
+      <section class="view" id="view-employees">
+        <div class="view-head">
+          <div><h2>Employés</h2><p>Personnel, rôles et photos de profil</p></div>
+        </div>
+        <div class="employee-grid" id="employeeGrid"></div>
+      </section>
+
+    </main>
+  </div>
 
   <!-- Modale : nouvelle tâche -->
   <div class="modal-backdrop" id="taskModalBackdrop" hidden>
@@ -245,29 +334,35 @@
     </div>
   </div>
 
-  <!-- Panneau : personnel -->
-  <div id="overlay-scrim" hidden></div>
-  <aside id="teamPanel">
-    <div class="panel-head">
-      <h2>Personnel</h2>
-      <button class="subtle" id="closeTeamBtn">✕</button>
-    </div>
-    <div class="panel-body">
-      <form id="userForm" style="margin-bottom:16px;">
-        <label style="font-size:12px;font-weight:700;color:var(--muted);">Prénom</label>
-        <input type="text" id="userPrenom" required style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin:4px 0 8px;" />
-        <label style="font-size:12px;font-weight:700;color:var(--muted);">Nom</label>
-        <input type="text" id="userNom" required style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin:4px 0 8px;" />
-        <label style="font-size:12px;font-weight:700;color:var(--muted);">Rôle</label>
-        <select id="userRole" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin:4px 0 10px;">
+  <!-- Modale : nouvel employé -->
+  <div class="modal-backdrop" id="userModalBackdrop" hidden>
+    <div class="modal">
+      <h2>Nouvel employé</h2>
+      <form id="userForm">
+        <label>Photo de profil (optionnel)</label>
+        <div class="photo-picker">
+          <div class="preview" id="userPhotoPreview">👤</div>
+          <input type="file" id="userPhotoInput" accept="image/png,image/jpeg,image/webp" />
+        </div>
+        <label>Prénom</label>
+        <input type="text" id="userPrenom" required />
+        <label>Nom</label>
+        <input type="text" id="userNom" required />
+        <label>Rôle</label>
+        <select id="userRole">
           <option value="employe">Employé</option>
           <option value="admin">Admin</option>
         </select>
-        <button class="primary" type="submit" style="width:100%;padding:9px;">Ajouter</button>
+        <div class="modal-footer">
+          <button type="button" class="ghost" id="cancelUserModal">Annuler</button>
+          <button class="primary" type="submit">Ajouter</button>
+        </div>
       </form>
-      <div id="userList"><p class="empty" style="font-size:12px;color:var(--muted);">Chargement…</p></div>
     </div>
-  </aside>
+  </div>
+
+  <!-- input caché pour changer la photo depuis une carte employé existante -->
+  <input type="file" id="avatarChangeInput" accept="image/png,image/jpeg,image/webp" hidden />
 
   <div id="toast" class="toast"></div>
 
@@ -282,6 +377,16 @@
     let users = [];
     let tasks = [];
     let lastAuthError = false;
+    let currentView = "dashboard";
+
+    // ---------- Navigation ----------
+    function switchView(view) {
+      currentView = view;
+      document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + view));
+      document.querySelectorAll(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+    }
+    document.querySelectorAll(".nav-item").forEach(b => b.addEventListener("click", () => switchView(b.dataset.view)));
+    switchView("dashboard");
 
     // ---------- Clé API ----------
     function apiKey() { return localStorage.getItem("taskboard_api_key") || ""; }
@@ -324,7 +429,9 @@
 
     // ---------- API ----------
     async function api(path, options = {}) {
-      const headers = Object.assign({ "Content-Type": "application/json" }, options.headers || {});
+      const headers = Object.assign({}, options.headers || {});
+      const isForm = options.body instanceof FormData;
+      if (!isForm) headers["Content-Type"] = "application/json";
       if (options.method && options.method !== "GET") headers["X-API-Key"] = apiKey();
       const res = await fetch("/api/v1" + path, Object.assign({}, options, { headers }));
       if (res.status === 401) {
@@ -358,26 +465,72 @@
       setTimeout(() => toast.classList.remove("show"), 3500);
     }
 
-    // ---------- Avatars ----------
+    // ---------- Avatars (photo si dispo, sinon initiales colorées) ----------
     const AVATAR_COLORS = ["#2563eb", "#7c3aed", "#db2777", "#d97706", "#16a34a", "#0891b2", "#dc2626"];
     function colorFor(id) {
       let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
       return AVATAR_COLORS[h % AVATAR_COLORS.length];
     }
     function initials(u) { return ((u.prenom[0] || "") + (u.nom[0] || "")).toUpperCase(); }
+    function avatarStyle(u) { return u.photo_url ? `background-image:url('${u.photo_url}')` : `background:${colorFor(u.id)}`; }
+    function avatarHtml(u) {
+      return `<div class="avatar" style="${avatarStyle(u)}" title="${u.prenom} ${u.nom}">${u.photo_url ? "" : initials(u)}</div>`;
+    }
+    function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
 
-    // ---------- Rendu stats ----------
-    function renderStats() {
+    // ---------- Dashboard ----------
+    function renderDashboard() {
       const counts = { a_faire: 0, en_cours: 0, en_retard: 0, terminee: 0 };
       tasks.forEach(t => { if (counts[t.statut] !== undefined) counts[t.statut]++; });
-      const actifs = users.filter(u => u.statut === "actif").length;
-      document.getElementById("stats").innerHTML = `
-        <div class="stat-chip">👥 <b>${actifs}</b> actifs</div>
-        <div class="stat-chip">📋 <b>${tasks.filter(t => t.statut !== 'archivee').length}</b> tâches</div>
-        <div class="stat-chip">🔴 <b>${counts.en_retard}</b> en retard</div>`;
+      const actifs = users.filter(u => u.statut === "actif");
+
+      document.getElementById("kpis").innerHTML = `
+        <div class="kpi info"><div class="n">${counts.en_cours}</div><div class="l">Tâches en cours</div></div>
+        <div class="kpi danger"><div class="n">${counts.en_retard}</div><div class="l">En retard</div></div>
+        <div class="kpi ok"><div class="n">${counts.terminee}</div><div class="l">Terminées</div></div>
+        <div class="kpi"><div class="n">${actifs.length}</div><div class="l">Personnel actif</div></div>`;
+
+      const overdue = tasks.filter(t => t.statut === "en_retard");
+      const alerts = document.getElementById("alerts");
+      if (!overdue.length) {
+        alerts.innerHTML = `<div class="empty-ok">✅ Aucune tâche en retard pour le moment.</div>`;
+      } else {
+        alerts.innerHTML = overdue.map(t => {
+          const names = (t.assigned_users || []).map(u => `${u.prenom} ${u.nom}`).join(", ") || "Non affilié";
+          const overdueMs = Date.now() - new Date(t.date_fin_prevue).getTime();
+          const totalMin = Math.max(0, Math.floor(overdueMs / 60000));
+          const h = Math.floor(totalMin / 60), m = totalMin % 60;
+          return `
+            <div class="alert-card">
+              <div class="left">
+                <div class="title">⚠ ${escapeHtml(t.titre)}</div>
+                ${t.description ? `<div class="desc">${escapeHtml(t.description)}</div>` : ""}
+              </div>
+              <div class="mid">
+                <div class="field"><div class="l">Personnel</div><div class="v">${escapeHtml(names)}</div></div>
+                <div class="field retard"><div class="l">Retard</div><div class="v">${h > 0 ? h + "h " : ""}${m}min</div></div>
+              </div>
+              <button class="primary small" onclick="completeTask('${t.id}')">✓ Terminer</button>
+            </div>`;
+        }).join("");
+      }
+
+      const workload = document.getElementById("workload");
+      const active = ["en_cours", "en_retard", "a_faire"];
+      const maxCount = Math.max(1, ...actifs.map(u => tasks.filter(t => active.includes(t.statut) && (t.assigned_users || []).some(au => au.id === u.id)).length));
+      workload.innerHTML = actifs.length ? actifs.map(u => {
+        const n = tasks.filter(t => active.includes(t.statut) && (t.assigned_users || []).some(au => au.id === u.id)).length;
+        return `
+          <div class="workload-row">
+            ${avatarHtml(u)}
+            <div class="name">${u.prenom} ${u.nom}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${(n / maxCount) * 100}%"></div></div>
+            <div class="count">${n} tâche${n > 1 ? "s" : ""}</div>
+          </div>`;
+      }).join("") : `<p style="font-size:12.5px;color:var(--muted);">Aucun personnel actif.</p>`;
     }
 
-    // ---------- Rendu board ----------
+    // ---------- Board (Tâches) ----------
     function timeChip(t) {
       if (t.statut === "terminee") return `<span class="time-chip ok">✓ terminée</span>`;
       if (!t.date_fin_prevue) return `<span class="time-chip neutral">${t.minutes_allouees} min</span>`;
@@ -389,8 +542,7 @@
     }
 
     function cardHtml(t) {
-      const av = (t.assigned_users || []).slice(0, 4).map(u =>
-        `<div class="avatar" style="background:${colorFor(u.id)}" title="${u.prenom} ${u.nom}">${initials(u)}</div>`).join("");
+      const av = (t.assigned_users || []).slice(0, 4).map(avatarHtml).join("");
       const actions = [];
       if (t.statut === "a_faire") actions.push(`<button class="primary small" onclick="startTask('${t.id}')">▶ Démarrer</button>`);
       if (t.statut === "en_cours" || t.statut === "en_retard") actions.push(`<button class="primary small" onclick="completeTask('${t.id}')">✓ Terminer</button>`);
@@ -406,8 +558,6 @@
           <div class="card-actions">${actions.join("")}</div>
         </div>`;
     }
-
-    function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
 
     function renderBoard() {
       const board = document.getElementById("board");
@@ -505,36 +655,83 @@
       } catch (err) { showToast(err.message, "overdue"); }
     });
 
-    // ---------- Panneau personnel ----------
-    function openTeamPanel() { document.getElementById("teamPanel").classList.add("open"); document.getElementById("overlay-scrim").hidden = false; }
-    function closeTeamPanel() { document.getElementById("teamPanel").classList.remove("open"); document.getElementById("overlay-scrim").hidden = true; }
-    document.getElementById("openTeamBtn").addEventListener("click", openTeamPanel);
-    document.getElementById("closeTeamBtn").addEventListener("click", closeTeamPanel);
-    document.getElementById("overlay-scrim").addEventListener("click", closeTeamPanel);
-
-    function renderUserList() {
-      const list = document.getElementById("userList");
-      if (!users.length) { list.innerHTML = '<p class="empty" style="font-size:12px;color:var(--muted);">Aucune personne enregistrée.</p>'; return; }
-      list.innerHTML = users.map(u => `
-        <div class="person-row">
-          <div class="avatar" style="background:${colorFor(u.id)};margin-left:0;">${initials(u)}</div>
-          <div class="info">
+    // ---------- Employés ----------
+    function renderEmployees() {
+      const grid = document.getElementById("employeeGrid");
+      const active = ["en_cours", "en_retard", "a_faire"];
+      const cards = users.map(u => {
+        const n = tasks.filter(t => active.includes(t.statut) && (t.assigned_users || []).some(au => au.id === u.id)).length;
+        return `
+          <div class="employee-card ${u.statut}">
+            <span class="badge-status ${u.statut}">${u.statut}</span>
+            <div class="photo-wrap">
+              <div class="avatar-lg" style="${avatarStyle(u)}">${u.photo_url ? "" : initials(u)}</div>
+              <div class="cam-btn" title="Changer la photo" onclick="pickAvatar('${u.id}')">📷</div>
+            </div>
             <div class="name">${u.prenom} ${u.nom}</div>
-            <div class="role">${u.role} · ${u.statut}</div>
-          </div>
-          ${u.statut === "actif" ? `<button class="danger-text" onclick="archiveUser('${u.id}')">Archiver</button>` : ""}
-        </div>`).join("");
+            <div class="role">${u.role}</div>
+            <div class="load"><b>${n}</b> tâche${n > 1 ? "s" : ""} active${n > 1 ? "s" : ""}</div>
+            ${u.statut === "actif" ? `<button class="danger-text" onclick="archiveUser('${u.id}')">Archiver</button>` : `<span style="font-size:11.5px;color:var(--muted);">Archivé</span>`}
+          </div>`;
+      }).join("");
+      grid.innerHTML = cards + `
+        <button class="add-employee-card" id="openUserModalBtn">
+          <span class="plus">+</span> Nouvel employé
+        </button>`;
+      document.getElementById("openUserModalBtn").addEventListener("click", openUserModal);
     }
+
+    let avatarTargetUserId = null;
+    function pickAvatar(userId) {
+      avatarTargetUserId = userId;
+      document.getElementById("avatarChangeInput").click();
+    }
+    document.getElementById("avatarChangeInput").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      e.target.value = "";
+      if (!file || !avatarTargetUserId) return;
+      try {
+        const fd = new FormData(); fd.append("file", file);
+        await api(`/users/${avatarTargetUserId}/photo`, { method: "POST", body: fd });
+        await loadAll();
+      } catch (err) { showToast(err.message, "overdue"); }
+    });
+
+    // ---------- Modale employé ----------
+    let newUserPhotoFile = null;
+    function openUserModal() {
+      newUserPhotoFile = null;
+      document.getElementById("userPhotoPreview").style.backgroundImage = "";
+      document.getElementById("userPhotoPreview").textContent = "👤";
+      document.getElementById("userModalBackdrop").hidden = false;
+      document.getElementById("userPrenom").focus();
+    }
+    function closeUserModal() { document.getElementById("userModalBackdrop").hidden = true; document.getElementById("userForm").reset(); }
+    document.getElementById("cancelUserModal").addEventListener("click", closeUserModal);
+    document.getElementById("userModalBackdrop").addEventListener("click", (e) => { if (e.target.id === "userModalBackdrop") closeUserModal(); });
+
+    document.getElementById("userPhotoInput").addEventListener("change", (e) => {
+      newUserPhotoFile = e.target.files[0] || null;
+      const preview = document.getElementById("userPhotoPreview");
+      if (newUserPhotoFile) {
+        preview.style.backgroundImage = `url('${URL.createObjectURL(newUserPhotoFile)}')`;
+        preview.textContent = "";
+      } else { preview.style.backgroundImage = ""; preview.textContent = "👤"; }
+    });
 
     document.getElementById("userForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       try {
-        await api("/users", { method: "POST", body: JSON.stringify({
+        const created = await api("/users", { method: "POST", body: JSON.stringify({
           prenom: document.getElementById("userPrenom").value.trim(),
           nom: document.getElementById("userNom").value.trim(),
           role: document.getElementById("userRole").value,
         })});
-        e.target.reset();
+        if (newUserPhotoFile) {
+          const fd = new FormData(); fd.append("file", newUserPhotoFile);
+          await api(`/users/${created.id}/photo`, { method: "POST", body: fd });
+        }
+        closeUserModal();
         await loadAll();
       } catch (err) { showToast(err.message, "overdue"); }
     });
@@ -543,7 +740,7 @@
     async function loadAll() {
       try {
         [users, tasks] = await Promise.all([api("/users"), api("/tasks")]);
-        renderStats(); renderBoard(); renderUserList();
+        renderDashboard(); renderBoard(); renderEmployees();
       } catch (e) { console.error(e); }
     }
 

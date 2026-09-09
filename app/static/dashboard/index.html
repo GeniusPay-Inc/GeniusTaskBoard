@@ -87,7 +87,7 @@
   .people { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
   .avatar {
     width: 26px; height: 26px; border-radius: 999px; flex: none; color: #06080f; font-size: 10.5px; font-weight: 800;
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: center; justify-content: center; background-size: cover; background-position: center;
   }
   .people .names { font-size: 12.5px; color: #b7c3dd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .timer { font-variant-numeric: tabular-nums; font-weight: 800; font-size: clamp(18px, 2.2vw, 26px); text-align: right; }
@@ -218,7 +218,7 @@
     function rowHtml(t) {
       const { ms, pct } = remaining(t);
       const cls = urgency(ms);
-      const av = (t.assigned_users || []).map(u => `<div class="avatar" style="background:${colorFor(u.id)}" title="${u.prenom} ${u.nom}">${initials(u)}</div>`).join("");
+      const av = (t.assigned_users || []).map(u => `<div class="avatar" style="${u.photo_url ? `background-image:url('${u.photo_url}')` : `background:${colorFor(u.id)}`}" title="${u.prenom} ${u.nom}">${u.photo_url ? "" : initials(u)}</div>`).join("");
       const names = (t.assigned_users || []).map(u => `${u.prenom} ${u.nom}`).join(", ") || "Non affilié";
       return `
         <div class="row" data-id="${t.id}">
