@@ -67,8 +67,10 @@ Base : `/api/v1`
 | POST    | `/tasks/{id}/archive`           | Archiver                                        |
 | GET     | `/dashboard`                    | Vue agrégée : tâches en cours + temps restant   |
 
-Authentification : JWT pour les humains (back-office), clé API (`X-API-Key`) pour les
-clients machine (future passerelle Arduino / autres apps).
+Authentification : `X-API-Key` requis sur toutes les routes d'écriture (`POST`/`PATCH`),
+partagée par le back-office et les futurs clients machine (passerelle Arduino / autres
+apps). Un JWT par utilisateur (phase 2) viendra s'ajouter pour distinguer les personnes
+qui pilotent le back-office.
 
 ## 4. Temps réel — WebSocket
 
@@ -100,14 +102,18 @@ taskboard/
 │   ├── models.py            # User, Task, TaskAssignment
 │   ├── schemas.py           # schémas Pydantic
 │   ├── websocket_manager.py # gestion des connexions + broadcast
+│   ├── overdue_worker.py    # boucle de fond : détecte les tâches en retard
+│   ├── security.py          # dépendance X-API-Key
 │   ├── routers/
 │   │   ├── users.py
 │   │   ├── tasks.py
 │   │   ├── dashboard.py
 │   │   └── ws.py
 │   └── static/
-│       └── dashboard/
-│           └── index.html   # écran TV minimal (temps réel + son)
+│       ├── dashboard/
+│       │   └── index.html   # écran TV (temps réel + son)
+│       └── admin/
+│           └── index.html   # back-office (CRUD personnel/tâches, pilotage)
 ├── alembic/                 # migrations (à générer)
 ├── docker-compose.yml
 ├── requirements.txt
@@ -117,9 +123,10 @@ taskboard/
 
 ## 6. Roadmap
 
-- **Phase 1 (ce squelette)** : CRUD Personnel/Tâches, affectation, calcul du temps
-  restant, WebSocket, dashboard TV minimal avec son, back-office simple.
-- **Phase 2** : Auth JWT + rôles, archivage, statut "en retard" automatique (tâche
-  planifiée / worker), clé API pour clients machine.
+- **Phase 1 (fait)** : CRUD Personnel/Tâches, affectation, calcul du temps
+  restant, WebSocket, dashboard TV avec son, back-office (`/admin`), archivage,
+  statut "en retard" automatique (`overdue_worker.py`), clé API partagée.
+- **Phase 2** : Auth JWT par utilisateur + rôles sur le back-office, token sur le
+  WebSocket pour consommateurs externes.
 - **Phase 3** : Passerelle Arduino (`apps/arduino-bridge/`), intégration API tierces.
 - **Phase 4** : Reporting / historique / export.

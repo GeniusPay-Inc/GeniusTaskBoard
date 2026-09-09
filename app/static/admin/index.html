@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TaskBoard — Back-office</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #f4f5f7; color: #1a1d24; padding: clamp(12px, 2vw, 28px);
+  }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  header h1 { font-size: clamp(20px, 2.6vw, 28px); margin: 0; }
+  header .links a { color: #2563eb; text-decoration: none; font-size: 14px; margin-left: 12px; }
+  .key-box { display: flex; gap: 6px; align-items: center; }
+  .key-box input { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; width: 200px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat { background: #fff; border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .stat .n { font-size: 26px; font-weight: 700; }
+  .stat .l { font-size: 12px; opacity: .65; text-transform: uppercase; letter-spacing: .04em; }
+  .columns { display: grid; grid-template-columns: 1fr; gap: 24px; }
+  @media (min-width: 900px) { .columns { grid-template-columns: 380px 1fr; } }
+  .panel { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .panel h2 { margin: 0 0 14px; font-size: 17px; }
+  form.inline { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid #eee; }
+  form.inline input[type=text], form.inline input[type=number], form.inline textarea, form.inline select {
+    padding: 9px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; width: 100%;
+  }
+  form.inline textarea { resize: vertical; min-height: 50px; }
+  form.inline label { font-size: 12px; font-weight: 600; opacity: .7; }
+  .checks { display: flex; flex-wrap: wrap; gap: 8px; max-height: 110px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; padding: 8px; }
+  .checks label { display: flex; align-items: center; gap: 6px; font-weight: 400; font-size: 13px; opacity: 1; }
+  button { cursor: pointer; border: none; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 600; }
+  button.primary { background: #2563eb; color: #fff; }
+  button.ghost { background: #eef1f5; color: #1a1d24; }
+  button.danger { background: #fee2e2; color: #b91c1c; }
+  button.small { padding: 5px 9px; font-size: 12px; }
+  ul.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
+  li.item { border: 1px solid #eee; border-radius: 10px; padding: 10px 12px; }
+  li.item .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  li.item .title { font-weight: 600; }
+  li.item .meta { font-size: 12px; opacity: .65; margin-top: 2px; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+  .badge.actif, .badge.a_faire { background: #e0e7ff; color: #3730a3; }
+  .badge.en_cours { background: #dbeafe; color: #1d4ed8; }
+  .badge.terminee { background: #dcfce7; color: #166534; }
+  .badge.en_retard { background: #fee2e2; color: #b91c1c; }
+  .badge.archive, .badge.archivee { background: #f3f4f6; color: #6b7280; }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .toast {
+    position: fixed; top: 16px; right: 16px; background: #22c55e; color: #04220f;
+    padding: 12px 18px; border-radius: 10px; font-weight: 600; opacity: 0;
+    transform: translateY(-10px); transition: all .3s ease; z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.completed { background: #3b82f6; color: #06122b; }
+  .toast.overdue { background: #ef4444; color: #2b0605; }
+  .empty { opacity: .5; font-size: 13px; padding: 10px 0; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>TaskBoard — Back-office</h1>
+    <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+      <div class="key-box">
+        <label for="apiKey" style="font-size:12px; opacity:.7;">Clé API</label>
+        <input id="apiKey" type="password" placeholder="X-API-Key" />
+      </div>
+      <div class="links"><a href="/dashboard" target="_blank">Écran de suivi ↗</a><a href="/docs" target="_blank">API docs ↗</a></div>
+    </div>
+  </header>
+
+  <div id="stats" class="stats"></div>
+
+  <div class="columns">
+    <section class="panel">
+      <h2>Personnel</h2>
+      <form class="inline" id="userForm">
+        <label>Prénom</label>
+        <input type="text" id="userPrenom" required />
+        <label>Nom</label>
+        <input type="text" id="userNom" required />
+        <label>Rôle</label>
+        <select id="userRole">
+          <option value="employe">Employé</option>
+          <option value="admin">Admin</option>
+        </select>
+        <button class="primary" type="submit">Ajouter</button>
+      </form>
+      <ul class="list" id="userList"><li class="empty">Chargement…</li></ul>
+    </section>
+
+    <section class="panel">
+      <h2>Tâches</h2>
+      <form class="inline" id="taskForm">
+        <label>Titre</label>
+        <input type="text" id="taskTitre" required />
+        <label>Description</label>
+        <textarea id="taskDescription"></textarea>
+        <label>Minutes allouées</label>
+        <input type="number" id="taskMinutes" min="1" required value="15" />
+        <label>Affilier à</label>
+        <div class="checks" id="taskUserChecks"><span class="empty">Aucun personnel</span></div>
+        <button class="primary" type="submit">Créer la tâche</button>
+      </form>
+      <ul class="list" id="taskList"><li class="empty">Chargement…</li></ul>
+    </section>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
+    let users = [];
+    let tasks = [];
+
+    function apiKey() { return localStorage.getItem("taskboard_api_key") || ""; }
+    document.getElementById("apiKey").value = apiKey();
+    document.getElementById("apiKey").addEventListener("change", (e) => {
+      localStorage.setItem("taskboard_api_key", e.target.value.trim());
+    });
+
+    async function api(path, options = {}) {
+      const headers = Object.assign({ "Content-Type": "application/json" }, options.headers || {});
+      if (options.method && options.method !== "GET") headers["X-API-Key"] = apiKey();
+      const res = await fetch("/api/v1" + path, Object.assign({}, options, { headers }));
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `Erreur ${res.status}`);
+      }
+      return res.status === 204 ? null : res.json();
+    }
+
+    function beep(freq = 880, duration = 180) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = freq;
+        osc.type = "sine";
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + duration / 1000);
+      } catch (e) { /* audio indisponible (autoplay bloqué) */ }
+    }
+
+    function showToast(text, cls) {
+      const toast = document.getElementById("toast");
+      toast.textContent = text;
+      toast.className = "toast show " + (cls || "");
+      setTimeout(() => toast.classList.remove("show"), 3500);
+    }
+
+    function renderStats() {
+      const counts = { a_faire: 0, en_cours: 0, en_retard: 0, terminee: 0 };
+      tasks.forEach(t => { if (counts[t.statut] !== undefined) counts[t.statut]++; });
+      const labels = { a_faire: "À faire", en_cours: "En cours", en_retard: "En retard", terminee: "Terminées" };
+      document.getElementById("stats").innerHTML = Object.entries(counts).map(([k, v]) =>
+        `<div class="stat"><div class="n">${v}</div><div class="l">${labels[k]}</div></div>`
+      ).join("");
+    }
+
+    function renderUsers() {
+      const list = document.getElementById("userList");
+      if (!users.length) { list.innerHTML = '<li class="empty">Aucune personne enregistrée.</li>'; return; }
+      list.innerHTML = users.map(u => `
+        <li class="item">
+          <div class="row">
+            <span class="title">${u.prenom} ${u.nom}</span>
+            <span class="badge ${u.statut}">${u.statut}</span>
+          </div>
+          <div class="meta">${u.role}</div>
+          ${u.statut === "actif" ? `<div class="actions"><button class="danger small" onclick="archiveUser('${u.id}')">Archiver</button></div>` : ""}
+        </li>`).join("");
+
+      const checks = document.getElementById("taskUserChecks");
+      const actifs = users.filter(u => u.statut === "actif");
+      checks.innerHTML = actifs.length
+        ? actifs.map(u => `<label><input type="checkbox" value="${u.id}" /> ${u.prenom} ${u.nom}</label>`).join("")
+        : '<span class="empty">Aucun personnel actif</span>';
+    }
+
+    function formatRemaining(iso, minutesAllouees) {
+      if (!iso) return `${minutesAllouees} min allouées`;
+      const ms = new Date(iso) - new Date();
+      if (ms <= 0) return "Temps écoulé";
+      const totalSec = Math.floor(ms / 1000);
+      return `${Math.floor(totalSec / 60)}:${(totalSec % 60).toString().padStart(2, "0")} restant`;
+    }
+
+    function renderTasks() {
+      const list = document.getElementById("taskList");
+      if (!tasks.length) { list.innerHTML = '<li class="empty">Aucune tâche.</li>'; return; }
+      list.innerHTML = tasks.map(t => {
+        const names = (t.assigned_users || []).map(u => `${u.prenom} ${u.nom}`).join(", ") || "Non affilié";
+        const actions = [];
+        if (t.statut === "a_faire") actions.push(`<button class="primary small" onclick="startTask('${t.id}')">Démarrer</button>`);
+        if (t.statut === "en_cours" || t.statut === "en_retard") actions.push(`<button class="primary small" onclick="completeTask('${t.id}')">Terminer</button>`);
+        if (t.statut !== "archivee") actions.push(`<button class="ghost small" onclick="archiveTask('${t.id}')">Archiver</button>`);
+        return `
+          <li class="item" data-id="${t.id}">
+            <div class="row">
+              <span class="title">${t.titre}</span>
+              <span class="badge ${t.statut}">${t.statut.replace("_", " ")}</span>
+            </div>
+            <div class="meta">${names} · <span class="timer" data-fin="${t.date_fin_prevue || ""}" data-minutes="${t.minutes_allouees}">${formatRemaining(t.date_fin_prevue, t.minutes_allouees)}</span></div>
+            ${t.description ? `<div class="meta">${t.description}</div>` : ""}
+            <div class="actions">${actions.join("")}</div>
+          </li>`;
+      }).join("");
+    }
+
+    function tickTimers() {
+      document.querySelectorAll(".timer[data-fin]").forEach(el => {
+        const fin = el.getAttribute("data-fin");
+        el.textContent = formatRemaining(fin || null, el.getAttribute("data-minutes"));
+      });
+    }
+    setInterval(tickTimers, 1000);
+
+    async function loadAll() {
+      try {
+        [users, tasks] = await Promise.all([api("/users"), api("/tasks")]);
+        renderStats(); renderUsers(); renderTasks();
+      } catch (e) { console.error(e); }
+    }
+
+    document.getElementById("userForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        await api("/users", { method: "POST", body: JSON.stringify({
+          prenom: document.getElementById("userPrenom").value.trim(),
+          nom: document.getElementById("userNom").value.trim(),
+          role: document.getElementById("userRole").value,
+        })});
+        e.target.reset();
+        await loadAll();
+      } catch (err) { showToast(err.message, "overdue"); }
+    });
+
+    document.getElementById("taskForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const userIds = Array.from(document.querySelectorAll("#taskUserChecks input:checked")).map(i => i.value);
+      try {
+        await api("/tasks", { method: "POST", body: JSON.stringify({
+          titre: document.getElementById("taskTitre").value.trim(),
+          description: document.getElementById("taskDescription").value.trim() || null,
+          minutes_allouees: parseInt(document.getElementById("taskMinutes").value, 10),
+          user_ids: userIds,
+        })});
+        e.target.reset();
+        document.getElementById("taskMinutes").value = 15;
+        await loadAll();
+      } catch (err) { showToast(err.message, "overdue"); }
+    });
+
+    async function archiveUser(id) { try { await api(`/users/${id}/archive`, { method: "POST" }); await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
+    async function startTask(id) { try { await api(`/tasks/${id}/start`, { method: "POST" }); await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
+    async function completeTask(id) { try { await api(`/tasks/${id}/complete`, { method: "POST" }); await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
+    async function archiveTask(id) { try { await api(`/tasks/${id}/archive`, { method: "POST" }); await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
+
+    function connectWS() {
+      const ws = new WebSocket(WS_URL);
+      ws.onmessage = (evt) => {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === "task.created") { showToast(`Nouvelle tâche : ${msg.task.titre}`, ""); beep(880, 200); }
+        else if (msg.type === "task.completed") { showToast(`Tâche terminée : ${msg.task.titre}`, "completed"); beep(520, 250); }
+        else if (msg.type === "task.overdue") { showToast(`Tâche en retard : ${msg.task.titre}`, "overdue"); beep(300, 350); }
+        loadAll();
+      };
+      ws.onclose = () => setTimeout(connectWS, 2000);
+    }
+
+    loadAll();
+    connectWS();
+  </script>
+</body>
+</html>

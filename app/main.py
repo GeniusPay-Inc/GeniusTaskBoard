@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -6,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import init_db
+from app.overdue_worker import overdue_watch_loop
 from app.routers import dashboard, tasks, users, ws
 
 
@@ -13,7 +15,9 @@ from app.routers import dashboard, tasks, users, ws
 async def lifespan(app: FastAPI):
     # En dev seulement : crée les tables si absentes. En prod, utiliser Alembic.
     await init_db()
+    watcher = asyncio.create_task(overdue_watch_loop())
     yield
+    watcher.cancel()
 
 
 app = FastAPI(title="TaskBoard API", version="1.0.0", lifespan=lifespan)
@@ -32,6 +36,7 @@ app.include_router(dashboard.router)
 app.include_router(ws.router)
 
 app.mount("/dashboard", StaticFiles(directory="app/static/dashboard", html=True), name="dashboard")
+app.mount("/admin", StaticFiles(directory="app/static/admin", html=True), name="admin")
 
 
 @app.get("/health")
