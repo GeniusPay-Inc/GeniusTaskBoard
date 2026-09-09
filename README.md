@@ -100,6 +100,28 @@ mais en production seul le trafic via Caddy (443) doit être exposé au public
   `Geni.mount(el, { state: 'idle' | 'welcome' | 'thinking' | 'loading' | 'success', size: 'xs'..'xl' })`.
   Utilisée aujourd'hui dans l'état vide de l'écran TV et la bannière « aucun
   retard » du dashboard back-office.
+- Thème **jour/nuit** (noir & blanc à plat, sans dégradé) : bouton ☀️/🌙 dans
+  les deux en-têtes, préférence mémorisée en `localStorage`. Les seules
+  couleurs qui subsistent sont fonctionnelles (rouge = retard, vert = ok,
+  ambre = attention) ; le décor (fonds, logo, sections) est strictement à plat.
+
+## Annonces vocales et mise en avant (écran TV)
+
+L'écran de suivi (`/dashboard`) parle via la Web Speech API du navigateur
+(`speechSynthesis`, voix française si disponible) :
+- à la fin d'une tâche : *« *Prénom* a terminé la tâche : *titre*. »*
+- quand il reste moins de 5 minutes sur une tâche en cours : *« Attention, il
+  reste moins de cinq minutes pour la tâche *titre*, confiée à *Prénom*. »*
+  (déclenché une seule fois par tâche)
+
+Les navigateurs bloquent le son tant qu'il n'y a pas eu d'interaction : un
+bandeau « Activer le son » apparaît au chargement — à cliquer une fois sur
+l'écran TV pour débloquer les annonces et les bips.
+
+Chaque tâche terminée déclenche aussi un **spotlight** : une carte plein
+écran (photo/avatar, titre, personnel, temps alloué) reprenant le style des
+gabarits fournis (bandeau coloré, champs clé/valeur), affichée ~7s puis
+enchaînée avec la suivante si plusieurs tâches se terminent d'affilée.
 
 ## Structure
 

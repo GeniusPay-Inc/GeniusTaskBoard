@@ -103,3 +103,29 @@ Cela garde le backend simple et permet à chaque écran de configurer ses propre
 **Conséquences**
 - Le format des événements WebSocket doit être stable et documenté (voir
   `docs/CONCEPTION.md`).
+
+---
+
+## ADR-005 — SQLite au lieu de PostgreSQL
+
+**Statut** : Adopté (remplace la partie base de données de l'ADR-002)
+
+**Contexte**
+ADR-002 avait retenu PostgreSQL. En pratique, à cette échelle (un seul serveur, un
+volume de tâches/personnel modeste, pas d'écriture concurrente lourde), faire tourner
+un service Postgres séparé ajoute de la complexité de déploiement (conteneur
+supplémentaire, identifiants, volume, sauvegarde) sans bénéfice réel.
+
+**Décision**
+- **SQLite** (via `aiosqlite` + SQLAlchemy async) comme base par défaut, stockée dans
+  un fichier `data/taskboard.db` monté en volume Docker.
+- `asyncpg`/PostgreSQL retirés des dépendances.
+
+**Conséquences**
+- Déploiement simplifié : un seul conteneur applicatif (plus de service `db` séparé).
+- Sauvegarde = copier un fichier.
+- Point de vigilance : SQLite gère mal les écritures concurrentes à haut débit. Si le
+  volume de tâches/écritures simultanées grossit significativement (plusieurs
+  passerelles machine, forte fréquence d'événements), migrer vers PostgreSQL —
+  SQLAlchemy + Alembic rendent ce changement mécanique (changer `DATABASE_URL`,
+  générer une migration).
