@@ -239,7 +239,6 @@
     const AVATAR_COLORS = ["#38bdf8", "#a855f7", "#f472b6", "#fbbf24", "#4ade80", "#22d3ee", "#fb7185"];
     let tasks = [];
     let tickerEvents = [];
-    let warnedTaskIds = new Set();
 
     function colorFor(id) {
       let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
@@ -438,6 +437,68 @@
       if (!html) Geni.mount(document.getElementById("geniEmpty"), { state: "idle", size: "lg" });
     }
 
+    // ---------- Annonces vocales de progression et de retard ----------
+    // Objectif : parler régulièrement pendant la vie d'une tâche sans spammer.
+    // On répartit ~8 annonces de temps restant sur la durée allouée (jamais
+    // plus rapprochées que 2 minutes, pour les tâches courtes), puis une fois
+    // le temps dépassé, on répète un rappel "en retard" toutes les 5 minutes
+    // jusqu'à ce que la tâche soit terminée.
+    const PROGRESS_MAX_CALLS = 8;
+    const PROGRESS_MIN_GAP_MS = 2 * 60 * 1000;
+    const OVERDUE_REPEAT_MS = 5 * 60 * 1000;
+
+    function computeAnnouncementCheckpoints(minutesAllouees) {
+      const totalMs = minutesAllouees * 60000;
+      const count = Math.max(1, Math.min(PROGRESS_MAX_CALLS, Math.floor(totalMs / PROGRESS_MIN_GAP_MS)));
+      const step = totalMs / (count + 1);
+      const checkpoints = [];
+      for (let i = count; i >= 1; i--) checkpoints.push(Math.round(step * i));
+      return checkpoints; // ms restants au moment de chaque annonce, du plus grand au plus petit
+    }
+
+    const progressCheckpoints = {}; // taskId -> paliers calculés (une fois par tâche)
+    const progressNextIndex = {};   // taskId -> index du prochain palier à annoncer
+    const overdueLastSpoken = {};   // taskId -> horodatage du dernier rappel "en retard"
+
+    function namesOf(task) {
+      return (task.assigned_users || []).map(u => u.prenom).join(" et ") || "l'équipe";
+    }
+
+    function announceTaskProgress(task, remainingMs) {
+      if (!progressCheckpoints[task.id]) progressCheckpoints[task.id] = computeAnnouncementCheckpoints(task.minutes_allouees);
+      const cps = progressCheckpoints[task.id];
+      if (progressNextIndex[task.id] === undefined) {
+        // Première fois qu'on voit cette tâche (ex: écran rechargé en cours de
+        // route) : on rattrape silencieusement les paliers déjà dépassés,
+        // sans annonce rétroactive, puis on annonce normalement ensuite.
+        let idx = 0;
+        while (idx < cps.length && remainingMs <= cps[idx]) idx++;
+        progressNextIndex[task.id] = idx;
+        return;
+      }
+      const idx = progressNextIndex[task.id];
+      if (idx < cps.length && remainingMs <= cps[idx]) {
+        progressNextIndex[task.id] = idx + 1;
+        const minutesLeft = Math.max(1, Math.round(remainingMs / 60000));
+        speak(`Il reste environ ${minutesLeft} minute${minutesLeft > 1 ? "s" : ""} pour la tâche ${task.titre}, confiée à ${namesOf(task)}.`);
+      }
+    }
+
+    function announceOverdue(task) {
+      const now = Date.now();
+      const last = overdueLastSpoken[task.id];
+      if (last === undefined || now - last >= OVERDUE_REPEAT_MS) {
+        overdueLastSpoken[task.id] = now;
+        speak(`Rappel : la tâche ${task.titre}, confiée à ${namesOf(task)}, a dépassé le temps qui lui était accordé.`);
+      }
+    }
+
+    function clearVoiceTracking(taskId) {
+      delete progressCheckpoints[taskId];
+      delete progressNextIndex[taskId];
+      delete overdueLastSpoken[taskId];
+    }
+
     function tickTimers() {
       document.querySelectorAll(".row[data-id]").forEach(row => {
         const el = row.querySelector(".timer[data-fin]");
@@ -454,15 +515,10 @@
           bar.style.width = Math.max(0, Math.min(100, (ms / totalMs) * 100)) + "%";
           bar.className = "bar-fill " + cls;
         }
-        const taskId = row.dataset.id;
-        if (cls === "warn" && !warnedTaskIds.has(taskId)) {
-          warnedTaskIds.add(taskId);
-          const task = tasks.find(t => t.id === taskId);
-          if (task) {
-            const names = (task.assigned_users || []).map(u => u.prenom).join(" et ") || "l'équipe";
-            speak(`Attention, il reste moins de cinq minutes pour la tâche ${task.titre}, confiée à ${names}.`);
-          }
-        }
+        const task = tasks.find(t => t.id === row.dataset.id);
+        if (!task) return;
+        if (cls === "danger") announceOverdue(task);
+        else announceTaskProgress(task, ms);
       });
     }
     setInterval(tickTimers, 1000);
@@ -478,12 +534,18 @@
       const ws = new WebSocket(WS_URL);
       ws.onmessage = (evt) => {
         const msg = JSON.parse(evt.data);
-        if (msg.type === "task.created") { showToast("sparkles", `Nouvelle tâche : ${msg.task.titre}`, ""); pushTicker(`Nouvelle tâche créée — ${msg.task.titre}`); beep([880, 1046]); }
+        if (msg.type === "task.created") {
+          showToast("sparkles", `Nouvelle tâche : ${msg.task.titre}`, "");
+          pushTicker(`Nouvelle tâche créée — ${msg.task.titre}`);
+          beep([880, 1046]);
+          speak(`Nouvelle tâche créée pour ${namesOf(msg.task)} : ${msg.task.titre}. ${msg.task.minutes_allouees} minute${msg.task.minutes_allouees > 1 ? "s" : ""} allouée${msg.task.minutes_allouees > 1 ? "s" : ""}.`);
+        }
         else if (msg.type === "task.completed") {
           showToast("check-circle-2", `Tâche terminée : ${msg.task.titre}`, "completed");
           pushTicker(`Tâche terminée — ${msg.task.titre}`);
           beep([660, 880, 1318], 150, 40);
           queueSpotlight(msg.task);
+          clearVoiceTracking(msg.task.id);
         }
         else if (msg.type === "task.overdue") { showToast("alarm-clock", `Tâche en retard : ${msg.task.titre}`, "overdue"); pushTicker(`Tâche en retard — ${msg.task.titre}`); beep([420, 300], 260, 80); }
         else if (msg.type === "task.started") { pushTicker(`Tâche démarrée — ${msg.task.titre}`); }
