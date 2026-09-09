@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
@@ -14,7 +15,7 @@ from app.routers import dashboard, tasks, users, ws
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # En dev seulement : crée les tables si absentes. En prod, utiliser Alembic.
+    # Crée les tables si absentes
     await init_db()
     watcher = asyncio.create_task(overdue_watch_loop())
     yield
@@ -40,6 +41,11 @@ app.mount("/dashboard", StaticFiles(directory="app/static/dashboard", html=True)
 app.mount("/admin", StaticFiles(directory="app/static/admin", html=True), name="admin")
 Path("app/static/uploads/avatars").mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="app/static/uploads"), name="uploads")
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/dashboard")
 
 
 @app.get("/health")
