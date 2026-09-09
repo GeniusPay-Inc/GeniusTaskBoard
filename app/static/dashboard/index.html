@@ -4,29 +4,34 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TaskBoard — Écran de suivi</title>
+<script src="https://unpkg.com/lucide@1.43.0/dist/umd/lucide.js"></script>
+<link rel="stylesheet" href="/assets/geni.css">
 <style>
   :root {
-    color-scheme: dark;
-    --bg: #06080f;
-    --panel: #0d1220;
-    --panel-2: #10192e;
-    --line: #1c2740;
-    --ink: #e8ecf7;
-    --muted: #6b7a9c;
+    --bg: #000000;
+    --panel: #0a0a0a;
+    --panel-2: #121212;
+    --line: #262626;
+    --ink: #ffffff;
+    --muted: #8a8a8a;
     --ok: #22c55e;
     --warn: #f59e0b;
     --danger: #ef4444;
     --info: #38bdf8;
   }
+  :root[data-theme="day"] {
+    --bg: #ffffff;
+    --panel: #f4f4f5;
+    --panel-2: #ececee;
+    --line: #dcdce0;
+    --ink: #0a0a0a;
+    --muted: #62626a;
+  }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
     margin: 0; font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-    background:
-      radial-gradient(1200px 600px at 15% -10%, #101c3a 0%, transparent 60%),
-      radial-gradient(1000px 500px at 110% 10%, #1a1030 0%, transparent 55%),
-      var(--bg);
-    color: var(--ink); overflow-x: hidden;
+    background: var(--bg); color: var(--ink); overflow-x: hidden;
   }
   .wrap { padding: clamp(14px, 2vw, 28px) clamp(14px, 2.4vw, 34px) 0; padding-bottom: 70px; min-height: 100vh; }
 
@@ -35,21 +40,30 @@
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
     padding-bottom: clamp(14px, 2vw, 22px); border-bottom: 1px solid var(--line); margin-bottom: clamp(14px, 2vw, 22px);
   }
-  .brand { display: flex; align-items: center; gap: 14px; }
-  .brand .mark {
-    width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, #2563eb, #a855f7);
-    display: flex; align-items: center; justify-content: center; font-weight: 900; letter-spacing: -1px; font-size: 17px;
+  .brand { display: flex; align-items: center; gap: 16px; }
+  .gp-logo { display: flex; align-items: center; font-weight: 800; font-size: clamp(18px, 2.2vw, 24px); letter-spacing: -.01em; white-space: nowrap; }
+  .gp-logo .g { color: var(--ink); }
+  .gp-logo .p { background: #2563eb; color: #fff; padding: 1px 9px 3px; border-radius: 7px; margin-left: 4px; }
+  .brand .tag {
+    font-size: 12px; color: var(--muted); letter-spacing: .16em; text-transform: uppercase; font-weight: 700;
+    padding-left: 16px; margin-left: 2px; border-left: 1px solid var(--line);
   }
-  .brand h1 { margin: 0; font-size: clamp(18px, 2.4vw, 26px); letter-spacing: .04em; text-transform: uppercase; }
-  .brand .tag { font-size: 11px; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
+  svg.lucide { width: 16px; height: 16px; stroke-width: 2.2; vertical-align: -3px; }
+  .header-right { display: flex; align-items: center; gap: 14px; }
   .live {
-    display: flex; align-items: center; gap: 8px; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.4);
-    color: #fca5a5; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .08em;
+    display: flex; align-items: center; gap: 8px; background: transparent; border: 1px solid var(--danger);
+    color: var(--danger); padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .08em;
   }
   .live .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--danger); animation: blink 1.2s infinite; }
   @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
   .clock { font-variant-numeric: tabular-nums; font-size: clamp(20px, 3vw, 30px); font-weight: 800; letter-spacing: .03em; }
   .clock .date { display: block; text-align: right; font-size: 11px; font-weight: 500; color: var(--muted); text-transform: capitalize; }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none;
+  }
+  .icon-btn:hover { background: var(--panel); }
+  .icon-btn.muted-state { color: var(--muted); }
 
   /* ---------- Summary strip ---------- */
   .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: clamp(16px, 2.4vw, 26px); }
@@ -59,19 +73,22 @@
   }
   .sum-card .n { font-size: clamp(22px, 3vw, 32px); font-weight: 800; font-variant-numeric: tabular-nums; }
   .sum-card .l { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .sum-card .sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
   .sum-card.ok .n { color: var(--ok); } .sum-card.info .n { color: var(--info); }
   .sum-card.warn .n { color: var(--warn); } .sum-card.danger .n { color: var(--danger); }
 
-  /* ---------- Sections (façon board de cotes) ---------- */
+  /* ---------- Sections (façon board de cotes, à plat) ---------- */
   .section { margin-bottom: clamp(16px, 2.4vw, 26px); }
   .section-head {
     display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 8px 8px 0 0;
     font-weight: 800; letter-spacing: .1em; text-transform: uppercase; font-size: clamp(12px, 1.3vw, 14px);
+    background: var(--panel); border: 1px solid var(--line); border-bottom: none; border-left: 4px solid currentColor;
   }
-  .section-head .n-badge { margin-left: auto; background: rgba(255,255,255,.15); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
-  .section-head.en_cours { background: linear-gradient(90deg, rgba(56,189,248,.22), transparent); color: var(--info); }
-  .section-head.en_retard { background: linear-gradient(90deg, rgba(239,68,68,.25), transparent); color: #fca5a5; }
-  .section-head.a_faire { background: linear-gradient(90deg, rgba(148,163,184,.18), transparent); color: #cbd5e1; }
+  .section-head .n-badge { margin-left: auto; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--ink); }
+  .section-head svg.lucide { margin-right: 4px; width: 15px; height: 15px; }
+  .section-head.en_cours { color: var(--info); }
+  .section-head.en_retard { color: var(--danger); }
+  .section-head.a_faire { color: var(--muted); }
 
   .rows { background: var(--panel); border: 1px solid var(--line); border-radius: 0 0 10px 10px; overflow: hidden; }
   .row {
@@ -81,62 +98,109 @@
   .row:last-child { border-bottom: none; }
   .row:nth-child(odd) { background: var(--panel-2); }
   .row.flash { animation: rowFlash 1.4s ease-out 2; }
-  @keyframes rowFlash { 0% { background: rgba(56,189,248,.35); } 100% { background: transparent; } }
+  @keyframes rowFlash { 0% { background: var(--info); opacity: .35; } 100% { background: transparent; opacity: 1; } }
   .row .titre { font-weight: 700; font-size: clamp(13px, 1.5vw, 16px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .titre .desc { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); white-space: normal; margin-top: 2px; }
   .people { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
   .avatar {
-    width: 26px; height: 26px; border-radius: 999px; flex: none; color: #06080f; font-size: 10.5px; font-weight: 800;
+    width: 26px; height: 26px; border-radius: 999px; flex: none; color: #000; font-size: 10.5px; font-weight: 800;
     display: flex; align-items: center; justify-content: center; background-size: cover; background-position: center;
+    border: 1px solid var(--line);
   }
-  .people .names { font-size: 12.5px; color: #b7c3dd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .people .names { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .timer { font-variant-numeric: tabular-nums; font-weight: 800; font-size: clamp(18px, 2.2vw, 26px); text-align: right; }
   .timer.ok { color: var(--ok); } .timer.warn { color: var(--warn); } .timer.danger { color: var(--danger); animation: blink 1s infinite; }
   .timer.neutral { color: var(--muted); font-size: clamp(13px, 1.5vw, 15px); font-weight: 700; }
-  .bar-track { height: 5px; border-radius: 999px; background: #1a2440; overflow: hidden; margin-top: 6px; }
+  .bar-track { height: 5px; border-radius: 999px; background: var(--line); overflow: hidden; margin-top: 6px; }
   .bar-fill { height: 100%; border-radius: 999px; transition: width 1s linear; }
   .bar-fill.ok { background: var(--ok); } .bar-fill.warn { background: var(--warn); } .bar-fill.danger { background: var(--danger); }
   .empty-row { padding: 20px 16px; color: var(--muted); font-size: 13px; text-align: center; }
 
-  .board-empty { text-align: center; padding: 80px 20px; color: var(--muted); }
-  .board-empty .big { font-size: 40px; margin-bottom: 10px; }
+  .board-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 15px; }
+  .board-empty .geni { margin-bottom: 6px; }
 
   /* ---------- Toast ---------- */
   .toast {
-    position: fixed; top: 20px; right: 20px; background: var(--ok); color: #04220f;
+    position: fixed; top: 20px; right: 20px; background: var(--ink); color: var(--bg);
     padding: 14px 22px; border-radius: 12px; font-weight: 800; opacity: 0; font-size: 15px;
-    transform: translateY(-14px); transition: all .3s ease; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,.4);
+    transform: translateY(-14px); transition: all .3s ease; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,.4); border: 1px solid var(--line);
   }
   .toast.show { opacity: 1; transform: translateY(0); }
-  .toast.completed { background: var(--info); color: #04182b; }
+  .toast.completed { background: var(--ok); color: #04220f; }
   .toast.overdue { background: var(--danger); color: #2b0605; }
+  .btn-ic { display: inline-flex; align-items: center; gap: 8px; }
+  .toast svg.lucide { width: 18px; height: 18px; }
 
   /* ---------- Ticker ---------- */
   .ticker {
-    position: fixed; left: 0; right: 0; bottom: 0; height: 42px; background: #0a0f1c; border-top: 1px solid var(--line);
+    position: fixed; left: 0; right: 0; bottom: 0; height: 42px; background: var(--panel); border-top: 1px solid var(--line);
     display: flex; align-items: center; overflow: hidden; z-index: 40;
   }
   .ticker .label {
-    flex: none; height: 100%; display: flex; align-items: center; padding: 0 14px; background: linear-gradient(90deg,#dc2626,#7c2d12);
+    flex: none; height: 100%; display: flex; align-items: center; gap: 6px; padding: 0 14px; background: var(--danger); color: #fff;
     font-weight: 800; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; z-index: 2;
   }
+  .ticker .label svg.lucide { width: 14px; height: 14px; }
   .ticker-track { display: flex; white-space: nowrap; animation: scrollTicker 32s linear infinite; padding-left: 100%; }
-  .ticker-track span { padding: 0 28px; font-size: 13px; color: #c9d3ea; font-variant-numeric: tabular-nums; }
+  .ticker-track span { padding: 0 28px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   @keyframes scrollTicker { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+
+  /* ---------- Activation du son ---------- */
+  .sound-gate {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 60;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 8px 10px 8px 18px;
+    display: flex; align-items: center; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.4);
+  }
+  .sound-gate[hidden] { display: none; }
+  .sound-gate span { font-size: 13px; font-weight: 600; }
+  .sound-gate button {
+    background: var(--ink); color: var(--bg); border: none; border-radius: 999px; padding: 8px 16px;
+    font-weight: 700; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  }
+
+  /* ---------- Spotlight : mise en avant d'une tâche terminée ---------- */
+  .spotlight-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.75);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    display: flex; align-items: center; justify-content: center; z-index: 70; padding: 20px;
+  }
+  .spotlight-backdrop[hidden] { display: none; }
+  .spotlight-card {
+    background: var(--panel); border: 1px solid var(--line); border-left: 6px solid var(--ok); border-radius: 18px;
+    padding: clamp(20px,3vw,36px) clamp(24px,4vw,48px); max-width: 720px; width: 100%; text-align: center;
+    opacity: 0; transform: scale(.94) translateY(10px); transition: all .35s cubic-bezier(.2,.9,.3,1.2);
+    position: relative; overflow: hidden;
+  }
+  .spotlight-card.show { opacity: 1; transform: scale(1) translateY(0); }
+  .spotlight-ribbon {
+    display: inline-flex; align-items: center; gap: 8px; background: var(--ok); color: #04220f; font-weight: 800;
+    font-size: 12px; letter-spacing: .1em; text-transform: uppercase; padding: 6px 16px; border-radius: 999px; margin-bottom: 18px;
+  }
+  .spotlight-avatar {
+    width: 84px; height: 84px; border-radius: 999px; margin: 0 auto 16px; background-size: cover; background-position: center;
+    display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #000; border: 2px solid var(--line);
+  }
+  .spotlight-title { font-size: clamp(22px, 3vw, 34px); font-weight: 800; margin-bottom: 18px; }
+  .spotlight-fields { display: flex; justify-content: center; gap: clamp(20px,4vw,48px); flex-wrap: wrap; }
+  .spotlight-fields .field .l { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+  .spotlight-fields .field .v { font-size: 17px; font-weight: 700; margin-top: 4px; }
+  .spotlight-progress { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--ok); width: 100%; }
+  .spotlight-progress.run { animation: spotlightShrink 7s linear forwards; }
+  @keyframes spotlightShrink { from { width: 100%; } to { width: 0%; } }
 </style>
 </head>
 <body>
   <div class="wrap">
     <header>
       <div class="brand">
-        <div class="mark">TB</div>
-        <div>
-          <h1>TaskBoard</h1>
-          <div class="tag">Écran de suivi en temps réel</div>
-        </div>
+        <div class="gp-logo"><span class="g">Genius</span><span class="p">Pay</span></div>
+        <div class="tag">TaskBoard · Suivi temps réel</div>
       </div>
-      <div class="live"><span class="dot"></span>LIVE</div>
-      <div class="clock"><span id="clockTime">--:--:--</span><span class="date" id="clockDate"></span></div>
+      <div class="header-right">
+        <div class="live"><span class="dot"></span>LIVE</div>
+        <div class="clock"><span id="clockTime">--:--:--</span><span class="date" id="clockDate"></span></div>
+        <button class="icon-btn" id="themeToggle" title="Basculer jour/nuit"></button>
+      </div>
     </header>
 
     <div class="summary" id="summary"></div>
@@ -146,24 +210,63 @@
 
   <div id="toast" class="toast"></div>
 
+  <div class="sound-gate" id="soundGate">
+    <span>Activer les annonces vocales du moniteur ?</span>
+    <button id="soundGateBtn"><i data-lucide="volume-2"></i> Activer le son</button>
+  </div>
+
+  <div class="spotlight-backdrop" id="spotlightBackdrop" hidden>
+    <div class="spotlight-card" id="spotlightCard">
+      <div class="spotlight-ribbon"><i data-lucide="check-circle-2"></i> Tâche terminée</div>
+      <div class="spotlight-avatar" id="spotlightAvatar"></div>
+      <div class="spotlight-title" id="spotlightTitle"></div>
+      <div class="spotlight-fields">
+        <div class="field"><div class="l">Réalisée par</div><div class="v" id="spotlightPerson"></div></div>
+        <div class="field"><div class="l">Temps alloué</div><div class="v" id="spotlightDuration"></div></div>
+      </div>
+      <div class="spotlight-progress" id="spotlightProgress"></div>
+    </div>
+  </div>
+
   <div class="ticker">
-    <div class="label">⚡ Activité</div>
+    <div class="label"><i data-lucide="zap"></i> Activité</div>
     <div class="ticker-track" id="tickerTrack"><span>En attente d'activité…</span></div>
   </div>
 
+  <script src="/assets/geni.js"></script>
   <script>
     const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
     const AVATAR_COLORS = ["#38bdf8", "#a855f7", "#f472b6", "#fbbf24", "#4ade80", "#22d3ee", "#fb7185"];
     let tasks = [];
     let tickerEvents = [];
+    let warnedTaskIds = new Set();
 
     function colorFor(id) {
       let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
       return AVATAR_COLORS[h % AVATAR_COLORS.length];
     }
     function initials(u) { return ((u.prenom[0] || "") + (u.nom[0] || "")).toUpperCase(); }
+    function icon(name, cls) { return `<i data-lucide="${name}"${cls ? ` class="${cls}"` : ""}></i>`; }
     function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+    function avatarHtml(u) {
+      return `<div class="avatar" style="${u.photo_url ? `background-image:url('${u.photo_url}')` : `background:${colorFor(u.id)}`}" title="${u.prenom} ${u.nom}">${u.photo_url ? "" : initials(u)}</div>`;
+    }
 
+    // ---------- Thème jour / nuit (à plat, sans dégradé) ----------
+    function applyTheme(t) {
+      document.documentElement.setAttribute("data-theme", t);
+      localStorage.setItem("taskboard_theme_dashboard", t);
+      const btn = document.getElementById("themeToggle");
+      btn.innerHTML = icon(t === "night" ? "sun" : "moon");
+      lucide.createIcons();
+    }
+    document.getElementById("themeToggle").addEventListener("click", () => {
+      applyTheme((localStorage.getItem("taskboard_theme_dashboard") || "night") === "night" ? "day" : "night");
+    });
+    applyTheme(localStorage.getItem("taskboard_theme_dashboard") || "night");
+
+    // ---------- Son : bips + voix ----------
+    let soundReady = false;
     function beep(freqs = [880], duration = 180, gap = 60) {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -180,10 +283,38 @@
         });
       } catch (e) {}
     }
-    function showToast(text, cls) {
+    let frenchVoice = null;
+    function loadVoices() {
+      if (!("speechSynthesis" in window)) return;
+      const voices = speechSynthesis.getVoices();
+      frenchVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith("fr")) || null;
+    }
+    if ("speechSynthesis" in window) {
+      loadVoices();
+      speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    function speak(text) {
+      if (!soundReady || !("speechSynthesis" in window)) return;
+      try {
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = "fr-FR";
+        if (frenchVoice) u.voice = frenchVoice;
+        u.rate = 1; u.pitch = 1;
+        speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+    document.getElementById("soundGateBtn").addEventListener("click", () => {
+      soundReady = true;
+      beep([660], 120);
+      speak("Le moniteur TaskBoard est prêt.");
+      document.getElementById("soundGate").hidden = true;
+    });
+
+    function showToast(iconName, text, cls) {
       const toast = document.getElementById("toast");
-      toast.textContent = text;
-      toast.className = "toast show " + (cls || "");
+      toast.innerHTML = `${icon(iconName)} <span>${escapeHtml(text)}</span>`;
+      toast.className = "toast show btn-ic " + (cls || "");
+      lucide.createIcons();
       setTimeout(() => toast.classList.remove("show"), 4000);
     }
     function pushTicker(text) {
@@ -191,6 +322,46 @@
       tickerEvents.unshift(`[${time}] ${text}`);
       tickerEvents = tickerEvents.slice(0, 12);
       document.getElementById("tickerTrack").innerHTML = tickerEvents.map(e => `<span>${escapeHtml(e)}</span>`).join("") || "<span>En attente d'activité…</span>";
+    }
+
+    // ---------- Spotlight : mise en avant d'une tâche terminée ----------
+    let spotlightQueue = [];
+    let spotlightBusy = false;
+    function queueSpotlight(task) { spotlightQueue.push(task); processSpotlightQueue(); }
+    function processSpotlightQueue() {
+      if (spotlightBusy || !spotlightQueue.length) return;
+      spotlightBusy = true;
+      showSpotlight(spotlightQueue.shift());
+    }
+    function showSpotlight(t) {
+      const people = t.assigned_users || [];
+      const names = people.map(u => `${u.prenom} ${u.nom}`).join(", ") || "Non affilié";
+      const first = people[0];
+      document.getElementById("spotlightTitle").textContent = t.titre;
+      document.getElementById("spotlightPerson").textContent = names;
+      document.getElementById("spotlightDuration").textContent = `${t.minutes_allouees} min`;
+      document.getElementById("spotlightAvatar").outerHTML = first
+        ? `<div class="spotlight-avatar" id="spotlightAvatar" style="${first.photo_url ? `background-image:url('${first.photo_url}')` : `background:${colorFor(first.id)}`}">${first.photo_url ? "" : initials(first)}</div>`
+        : `<div class="spotlight-avatar" id="spotlightAvatar" style="background:${colorFor(t.id)}">✓</div>`;
+
+      const backdrop = document.getElementById("spotlightBackdrop");
+      const card = document.getElementById("spotlightCard");
+      const bar = document.getElementById("spotlightProgress");
+      backdrop.hidden = false;
+      bar.classList.remove("run"); void bar.offsetWidth; bar.classList.add("run");
+      requestAnimationFrame(() => card.classList.add("show"));
+
+      const firstName = first ? first.prenom : "Un collègue";
+      speak(`${firstName} a terminé la tâche : ${t.titre}.`);
+
+      setTimeout(() => {
+        card.classList.remove("show");
+        setTimeout(() => {
+          backdrop.hidden = true;
+          spotlightBusy = false;
+          processSpotlightQueue();
+        }, 350);
+      }, 7000);
     }
 
     function tickClock() {
@@ -218,7 +389,7 @@
     function rowHtml(t) {
       const { ms, pct } = remaining(t);
       const cls = urgency(ms);
-      const av = (t.assigned_users || []).map(u => `<div class="avatar" style="${u.photo_url ? `background-image:url('${u.photo_url}')` : `background:${colorFor(u.id)}`}" title="${u.prenom} ${u.nom}">${u.photo_url ? "" : initials(u)}</div>`).join("");
+      const av = (t.assigned_users || []).map(avatarHtml).join("");
       const names = (t.assigned_users || []).map(u => `${u.prenom} ${u.nom}`).join(", ") || "Non affilié";
       return `
         <div class="row" data-id="${t.id}">
@@ -243,29 +414,34 @@
         </div>`;
     }
 
+    function statSub(count, zeroText) { return count === 0 ? `<div class="sub">${zeroText}</div>` : ""; }
+
     function render() {
       const enCours = tasks.filter(t => t.statut === "en_cours");
       const enRetard = tasks.filter(t => t.statut === "en_retard");
       const aFaire = tasks.filter(t => t.statut === "a_faire");
 
       document.getElementById("summary").innerHTML = `
-        <div class="sum-card info"><div class="n">${enCours.length}</div><div class="l">En cours</div></div>
-        <div class="sum-card danger"><div class="n">${enRetard.length}</div><div class="l">En retard</div></div>
-        <div class="sum-card">
-          <div class="n">${aFaire.length}</div><div class="l">À venir</div></div>
+        <div class="sum-card info"><div class="n">${enCours.length}</div><div class="l">En cours</div>${statSub(enCours.length, "Personne n'est en tâche pour l'instant")}</div>
+        <div class="sum-card danger"><div class="n">${enRetard.length}</div><div class="l">En retard</div>${statSub(enRetard.length, "Tout est dans les temps ✓")}</div>
+        <div class="sum-card"><div class="n">${aFaire.length}</div><div class="l">À venir</div>${statSub(aFaire.length, "Rien en attente de démarrage")}</div>
         <div class="sum-card ok"><div class="n">${tasks.length}</div><div class="l">Total affiché</div></div>`;
 
       const sections = document.getElementById("sections");
       const html = [
-        sectionHtml("en_retard", "🔴 En retard", enRetard),
-        sectionHtml("en_cours", "🔵 En cours", enCours),
-        sectionHtml("a_faire", "⚪ À venir", aFaire),
+        sectionHtml("en_retard", `${icon("octagon-alert")} En retard`, enRetard),
+        sectionHtml("en_cours", `${icon("activity")} En cours`, enCours),
+        sectionHtml("a_faire", `${icon("clock-3")} À venir`, aFaire),
       ].join("");
-      sections.innerHTML = html || `<div class="board-empty"><div class="big">🌙</div>Aucune tâche en cours pour le moment.</div>`;
+      sections.innerHTML = html || `<div class="board-empty"><div class="geni geni-lg" id="geniEmpty"></div>Aucune tâche en cours pour le moment.</div>`;
+      lucide.createIcons();
+      if (!html) Geni.mount(document.getElementById("geniEmpty"), { state: "idle", size: "lg" });
     }
 
     function tickTimers() {
-      document.querySelectorAll(".timer[data-fin]").forEach(el => {
+      document.querySelectorAll(".row[data-id]").forEach(row => {
+        const el = row.querySelector(".timer[data-fin]");
+        if (!el) return;
         const fin = el.getAttribute("data-fin");
         if (!fin) return;
         const ms = new Date(fin) - new Date();
@@ -277,6 +453,15 @@
           const totalMs = parseFloat(el.getAttribute("data-minutes")) * 60 * 1000;
           bar.style.width = Math.max(0, Math.min(100, (ms / totalMs) * 100)) + "%";
           bar.className = "bar-fill " + cls;
+        }
+        const taskId = row.dataset.id;
+        if (cls === "warn" && !warnedTaskIds.has(taskId)) {
+          warnedTaskIds.add(taskId);
+          const task = tasks.find(t => t.id === taskId);
+          if (task) {
+            const names = (task.assigned_users || []).map(u => u.prenom).join(" et ") || "l'équipe";
+            speak(`Attention, il reste moins de cinq minutes pour la tâche ${task.titre}, confiée à ${names}.`);
+          }
         }
       });
     }
@@ -293,9 +478,14 @@
       const ws = new WebSocket(WS_URL);
       ws.onmessage = (evt) => {
         const msg = JSON.parse(evt.data);
-        if (msg.type === "task.created") { showToast(`🆕 Nouvelle tâche : ${msg.task.titre}`, ""); pushTicker(`Nouvelle tâche créée — ${msg.task.titre}`); beep([880, 1046]); }
-        else if (msg.type === "task.completed") { showToast(`✅ Tâche terminée : ${msg.task.titre}`, "completed"); pushTicker(`Tâche terminée — ${msg.task.titre}`); beep([660, 880, 1318], 150, 40); }
-        else if (msg.type === "task.overdue") { showToast(`⏰ Tâche en retard : ${msg.task.titre}`, "overdue"); pushTicker(`Tâche en retard — ${msg.task.titre}`); beep([420, 300], 260, 80); }
+        if (msg.type === "task.created") { showToast("sparkles", `Nouvelle tâche : ${msg.task.titre}`, ""); pushTicker(`Nouvelle tâche créée — ${msg.task.titre}`); beep([880, 1046]); }
+        else if (msg.type === "task.completed") {
+          showToast("check-circle-2", `Tâche terminée : ${msg.task.titre}`, "completed");
+          pushTicker(`Tâche terminée — ${msg.task.titre}`);
+          beep([660, 880, 1318], 150, 40);
+          queueSpotlight(msg.task);
+        }
+        else if (msg.type === "task.overdue") { showToast("alarm-clock", `Tâche en retard : ${msg.task.titre}`, "overdue"); pushTicker(`Tâche en retard — ${msg.task.titre}`); beep([420, 300], 260, 80); }
         else if (msg.type === "task.started") { pushTicker(`Tâche démarrée — ${msg.task.titre}`); }
         loadDashboard().then(() => {
           const row = document.querySelector(`.row[data-id="${msg.task && msg.task.id}"]`);
@@ -305,6 +495,7 @@
       ws.onclose = () => setTimeout(connectWS, 2000);
     }
 
+    lucide.createIcons();
     loadDashboard();
     connectWS();
   </script>

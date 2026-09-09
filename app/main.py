@@ -39,6 +39,7 @@ app.include_router(ws.router)
 
 app.mount("/dashboard", StaticFiles(directory="app/static/dashboard", html=True), name="dashboard")
 app.mount("/admin", StaticFiles(directory="app/static/admin", html=True), name="admin")
+app.mount("/assets", StaticFiles(directory="app/static/shared"), name="assets")
 Path("app/static/uploads/avatars").mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="app/static/uploads"), name="uploads")
 
