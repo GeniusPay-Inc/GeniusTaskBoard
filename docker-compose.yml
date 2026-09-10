@@ -7,8 +7,8 @@ services:
       - "8000:8000"
     volumes:
       - ./app:/app/app
-      - ./data:/app/data
-      - ./uploads:/app/app/static/uploads
+      - taskboard_data:/app/data
+      - taskboard_uploads:/app/app/static/uploads
 
   caddy:
     image: caddy:2-alpine
@@ -24,6 +24,15 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
+# IMPORTANT — ne JAMAIS lancer `docker compose down -v` (ni supprimer ces
+# volumes manuellement) en production : c'est le seul moyen pour la base de
+# données et les photos de disparaître. Un `git pull` / `git clean` / un
+# nouveau `docker compose up --build` ne touchent jamais ces volumes nommés,
+# gérés par Docker en dehors du dossier du projet. Voir le README (section
+# « Déploiement ») pour la procédure de migration si vous mettiez à jour
+# depuis une ancienne version qui utilisait des bind mounts (./data, ./uploads).
 volumes:
   caddy_data:
   caddy_config:
+  taskboard_data:
+  taskboard_uploads:

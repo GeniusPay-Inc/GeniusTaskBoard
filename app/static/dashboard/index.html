@@ -628,6 +628,7 @@
         }
         else if (msg.type === "task.overdue") { showToast("alarm-clock", `Tâche en retard : ${msg.task.titre}`, "overdue"); pushTicker(`Tâche en retard — ${msg.task.titre}`); beep([420, 300], 260, 80); }
         else if (msg.type === "task.started") { pushTicker(`Tâche démarrée — ${msg.task.titre}`); }
+        else if (msg.type === "task.deleted") { pushTicker(`Tâche supprimée — ${msg.task.titre}`); }
         loadDashboard().then(() => {
           const row = document.querySelector(`.row[data-id="${msg.task && msg.task.id}"]`);
           if (row) { row.classList.add("flash"); setTimeout(() => row.classList.remove("flash"), 2900); }

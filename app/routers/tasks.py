@@ -150,6 +150,16 @@ async def complete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     return _to_out(task)
 
 
+@router.delete("/{task_id}", status_code=204, dependencies=[Depends(require_api_key)])
+async def delete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Suppression définitive (contrairement à /archive qui est réversible)."""
+    task = await _get_task_with_users(db, task_id)
+    titre = task.titre
+    await db.delete(task)
+    await db.commit()
+    await manager.broadcast({"type": "task.deleted", "task": {"id": str(task_id), "titre": titre}})
+
+
 @router.post("/{task_id}/archive", response_model=TaskOut, dependencies=[Depends(require_api_key)])
 async def archive_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     task = await _get_task_with_users(db, task_id)

@@ -56,6 +56,18 @@ async def update_user(user_id: uuid.UUID, payload: UserUpdate, db: AsyncSession 
     return user
 
 
+@router.delete("/{user_id}", status_code=204, dependencies=[Depends(require_api_key)])
+async def delete_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Suppression définitive (contrairement à /archive qui est réversible).
+    Les affiliations (TaskAssignment) de cette personne sont supprimées en
+    cascade par la base ; les tâches elles-mêmes sont conservées."""
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "Personne introuvable")
+    await db.delete(user)
+    await db.commit()
+
+
 @router.post("/{user_id}/archive", response_model=UserOut, dependencies=[Depends(require_api_key)])
 async def archive_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     user = await db.get(User, user_id)

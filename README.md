@@ -61,6 +61,30 @@ l'échéance est dépassée passe automatiquement en `en_retard` (vérification
 toutes les 15s, voir `app/overdue_worker.py`) et diffuse l'événement
 `task.overdue`.
 
+## CRUD complet — personnel et tâches
+
+En plus du cycle de vie métier (démarrer/terminer/archiver/restaurer/affilier),
+`users` et `tasks` exposent un CRUD complet :
+
+| | Personnel (`/api/v1/users`) | Tâches (`/api/v1/tasks`) |
+|---|---|---|
+| Create | `POST` | `POST` |
+| Read | `GET`, `GET /{id}` | `GET`, `GET /{id}` |
+| Update | `PATCH /{id}` | `PATCH /{id}` |
+| Delete | `DELETE /{id}` (définitif) | `DELETE /{id}` (définitif) |
+
+`DELETE` est une suppression **définitive**, à distinguer de `/archive` qui
+est réversible (`/restore` pour les tâches). Dans le back-office, la
+suppression n'est proposée que sur les fiches déjà archivées (double
+confirmation implicite) et demande une confirmation explicite avant l'appel.
+Supprimer une personne retire ses affiliations aux tâches (l'historique des
+tâches elles-mêmes est conservé) ; supprimer une tâche retire ses
+affiliations avec elle.
+
+Chaque personne et chaque tâche porte aussi `created_at` (date d'inscription
+du compte / de création de la tâche) et `updated_at` (dernière modification),
+affichés dans le back-office (fiches employé, cartes du Kanban).
+
 ## Déploiement — task.geniuspay.tech
 
 Le domaine `task.geniuspay.tech` est prévu pour l'instance de production. Le
@@ -87,6 +111,48 @@ ports 80/443, obtient et renouvelle automatiquement le certificat TLS
 Le port 8000 de l'API reste aussi publié directement (utile en debug local),
 mais en production seul le trafic via Caddy (443) doit être exposé au public
 — fermer le port 8000 au niveau du pare-feu du serveur.
+
+### Redéployer sans perdre les données
+
+La base SQLite et les photos de profil vivent dans des **volumes Docker
+nommés** (`taskboard_data`, `taskboard_uploads`), pas dans le dossier du
+projet. Résultat : un redéploiement normal ne touche jamais aux données,
+quelle que soit la méthode utilisée pour mettre à jour le code —
+
+```bash
+git pull
+docker compose up --build -d
+```
+
+— y compris après un `git clean`/`git reset --hard` du dossier, ou un nouveau
+`git clone` dans un dossier différent : ces volumes sont gérés par Docker en
+dehors du répertoire du projet et survivent tant qu'ils ne sont pas supprimés
+explicitement.
+
+**Ne jamais faire ceci en production**, ça efface tout le personnel et
+toutes les tâches de façon définitive :
+```bash
+docker compose down -v   # le -v supprime les volumes nommés — JAMAIS en prod
+docker volume rm taskboard_data taskboard_uploads
+```
+`docker compose down` (sans `-v`) et `docker compose up --build -d` restent
+sans risque.
+
+En complément, un instantané de la base est automatiquement conservé
+(`data/backups/`, dans le volume `taskboard_data`, les 5 derniers) à chaque
+démarrage de l'API — un filet de sécurité en cas de mauvaise manip ou
+d'erreur de migration, pas une garantie contre la suppression du volume
+lui-même.
+
+**Migration depuis une installation existante** (mise à jour vers cette
+version de `docker-compose.yml`, qui remplace les anciens bind mounts
+`./data` et `./uploads` par des volumes nommés) : lancer une fois, sur le
+serveur, après le `git pull` :
+```bash
+./scripts/migrate-to-named-volumes.sh
+```
+Le script copie `./data/taskboard.db` et `./uploads/` existants dans les
+nouveaux volumes ; sans effet si déjà migré ou sur une installation neuve.
 
 ## Identité visuelle
 
