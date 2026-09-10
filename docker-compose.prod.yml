@@ -7,7 +7,6 @@ services:
     env_file: .env
     volumes:
       - taskboard_data:/app/data
-      - taskboard_uploads:/app/app/static/uploads
     networks:
       - taskboard_net
     healthcheck:
@@ -40,6 +39,5 @@ networks:
 
 volumes:
   taskboard_data:
-  taskboard_uploads:
   caddy_data:
   caddy_config:
