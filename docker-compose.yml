@@ -8,7 +8,6 @@ services:
     volumes:
       - ./app:/app/app
       - taskboard_data:/app/data
-      - taskboard_uploads:/app/app/static/uploads
 
   caddy:
     image: caddy:2-alpine
@@ -31,8 +30,12 @@ services:
 # gérés par Docker en dehors du dossier du projet. Voir le README (section
 # « Déploiement ») pour la procédure de migration si vous mettiez à jour
 # depuis une ancienne version qui utilisait des bind mounts (./data, ./uploads).
+#
+# NOTE : ce fichier docker-compose.yml sert pour un déploiement VPS manuel.
+# Sur une plateforme managée qui construit directement le Dockerfile (Railway,
+# Render, Fly.io…), docker-compose.yml n'est PAS utilisé — voir le README
+# pour la configuration du volume persistant équivalent sur ces plateformes.
 volumes:
   caddy_data:
   caddy_config:
   taskboard_data:
-  taskboard_uploads:

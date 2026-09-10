@@ -13,7 +13,7 @@ from app.security import require_api_key
 
 router = APIRouter(prefix="/api/v1/users", tags=["personnel"])
 
-AVATAR_DIR = Path("app/static/uploads/avatars")
+AVATAR_DIR = Path("data/uploads/avatars")
 AVATAR_CONTENT_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 AVATAR_MAX_BYTES = 5 * 1024 * 1024  # 5 Mo
 

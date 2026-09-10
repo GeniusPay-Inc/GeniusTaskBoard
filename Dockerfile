@@ -41,7 +41,7 @@ COPY --from=builder /opt/venv /opt/venv
 # Create a non-privileged user and group (appuser: 10001) and storage directories
 RUN groupadd -g 10001 appuser \
     && useradd -u 10001 -g appuser -s /bin/sh -m appuser \
-    && mkdir -p /app/data /app/app/static/uploads/avatars \
+    && mkdir -p /app/data/uploads/avatars \
     && chown -R appuser:appuser /app
 
 # Copy application code with non-root ownership

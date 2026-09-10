@@ -24,9 +24,11 @@ docker compose up --build
 
 Les tables sont créées automatiquement au démarrage en dev (`init_db`). Pour la
 prod, mettre en place Alembic (`alembic init alembic`) et retirer `init_db()`.
-Les photos de profil sont stockées sur disque dans `app/static/uploads/`
-(non versionné) — prévoir un stockage objet (S3, etc.) et un volume persistant
-si l'API tourne sur plusieurs instances ou est redéployée sans volume partagé.
+La base SQLite et les photos de profil sont stockées sur disque dans `data/`
+(non versionné, `data/taskboard.db` + `data/uploads/`) — **ce dossier doit
+reposer sur un volume/disque persistant en production**, sinon tout
+redéploiement repart d'un état vide (voir « Déploiement » plus bas). Prévoir
+un stockage objet (S3, etc.) si l'API tourne un jour sur plusieurs instances.
 
 ## Clé API
 
@@ -87,10 +89,42 @@ affichés dans le back-office (fiches employé, cartes du Kanban).
 
 ## Déploiement — task.geniuspay.tech
 
-Le domaine `task.geniuspay.tech` est prévu pour l'instance de production. Le
-`docker-compose.yml` inclut un service **Caddy** qui reçoit le trafic sur les
-ports 80/443, obtient et renouvelle automatiquement le certificat TLS
-(Let's Encrypt) pour ce domaine, et reverse-proxy vers l'API interne.
+Toutes les données qui doivent survivre à un redéploiement (base SQLite,
+photos de profil, sauvegardes automatiques) sont regroupées sous un seul
+dossier : **`data/`** (`data/taskboard.db`, `data/uploads/`, `data/backups/`).
+Peu importe la plateforme, la règle est la même : **`data/` doit reposer sur
+un volume/disque persistant, sinon tout redémarrage du conteneur repart
+d'un disque vide.**
+
+### Sur Railway (déploiement actuel)
+
+Railway construit directement l'image à partir du `Dockerfile` — il ne lit
+**pas** `docker-compose.yml` ni le script `scripts/migrate-to-named-volumes.sh`
+(qui ne s'appliquent qu'à un déploiement manuel décrit plus bas). Sur Railway,
+le stockage persistant se configure depuis le dashboard :
+
+1. Ouvrir le service API → **Settings → Persistent Storage** (visible dans le
+   menu latéral).
+2. Ajouter un volume et le monter sur **`/app/data`**.
+3. Redéployer (Railway relance automatiquement le conteneur après l'ajout
+   d'un volume). Le volume est vide au premier montage — le personnel et les
+   tâches actuellement en ligne devront être ressaisis une fois, puis ils
+   persisteront à tous les déploiements suivants.
+4. Domaine et TLS pour `task.geniuspay.tech` se configurent dans **Settings →
+   Domains**, indépendamment de Caddy (le service `caddy` de
+   `docker-compose.yml` n'est pas utilisé sur Railway).
+
+Sans volume attaché à `/app/data`, chaque redéploiement (nouveau build, push
+sur la branche connectée, redémarrage) repart d'un système de fichiers vierge
+— c'est ce qui explique la perte de la base à chaque déploiement.
+
+### Sur un VPS / serveur géré à la main (docker-compose)
+
+`docker-compose.yml` reste disponible pour un déploiement classique sur un
+serveur où vous avez un accès shell direct (pas Railway/Render/Fly.io). Il
+inclut un service **Caddy** qui reçoit le trafic sur les ports 80/443,
+obtient et renouvelle automatiquement le certificat TLS (Let's Encrypt), et
+reverse-proxy vers l'API interne.
 
 1. Pointer un enregistrement DNS `A` (et `AAAA` si IPv6) de `task.geniuspay.tech`
    vers l'IP publique du serveur.
@@ -112,47 +146,43 @@ Le port 8000 de l'API reste aussi publié directement (utile en debug local),
 mais en production seul le trafic via Caddy (443) doit être exposé au public
 — fermer le port 8000 au niveau du pare-feu du serveur.
 
-### Redéployer sans perdre les données
+#### Redéployer sans perdre les données (VPS)
 
-La base SQLite et les photos de profil vivent dans des **volumes Docker
-nommés** (`taskboard_data`, `taskboard_uploads`), pas dans le dossier du
-projet. Résultat : un redéploiement normal ne touche jamais aux données,
-quelle que soit la méthode utilisée pour mettre à jour le code —
-
+`data/` vit dans un **volume Docker nommé** (`taskboard_data`), pas dans le
+dossier du projet. Résultat : un redéploiement normal ne touche jamais aux
+données —
 ```bash
 git pull
 docker compose up --build -d
 ```
-
 — y compris après un `git clean`/`git reset --hard` du dossier, ou un nouveau
-`git clone` dans un dossier différent : ces volumes sont gérés par Docker en
-dehors du répertoire du projet et survivent tant qu'ils ne sont pas supprimés
+`git clone` dans un dossier différent : ce volume est géré par Docker en
+dehors du répertoire du projet et survit tant qu'il n'est pas supprimé
 explicitement.
 
 **Ne jamais faire ceci en production**, ça efface tout le personnel et
 toutes les tâches de façon définitive :
 ```bash
-docker compose down -v   # le -v supprime les volumes nommés — JAMAIS en prod
-docker volume rm taskboard_data taskboard_uploads
+docker compose down -v   # le -v supprime le volume nommé — JAMAIS en prod
+docker volume rm taskboard_data
 ```
 `docker compose down` (sans `-v`) et `docker compose up --build -d` restent
 sans risque.
 
-En complément, un instantané de la base est automatiquement conservé
-(`data/backups/`, dans le volume `taskboard_data`, les 5 derniers) à chaque
-démarrage de l'API — un filet de sécurité en cas de mauvaise manip ou
-d'erreur de migration, pas une garantie contre la suppression du volume
-lui-même.
-
-**Migration depuis une installation existante** (mise à jour vers cette
-version de `docker-compose.yml`, qui remplace les anciens bind mounts
-`./data` et `./uploads` par des volumes nommés) : lancer une fois, sur le
-serveur, après le `git pull` :
+**Migration depuis une installation existante** (bind mounts `./data` /
+`./uploads` vers le volume nommé) : lancer une fois, sur le serveur, après
+le `git pull` :
 ```bash
 ./scripts/migrate-to-named-volumes.sh
 ```
-Le script copie `./data/taskboard.db` et `./uploads/` existants dans les
-nouveaux volumes ; sans effet si déjà migré ou sur une installation neuve.
+Sans effet si déjà migré ou sur une installation neuve.
+
+### Dans tous les cas
+
+Un instantané de la base est automatiquement conservé (`data/backups/`, les
+5 derniers) à chaque démarrage de l'API — un filet de sécurité en cas de
+mauvaise manip ou d'erreur de migration, pas une garantie contre la
+suppression du volume/disque lui-même.
 
 ## Identité visuelle
 
