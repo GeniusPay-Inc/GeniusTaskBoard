@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TaskBoard — Écran de suivi</title>
 <script src="https://unpkg.com/lucide@1.43.0/dist/umd/lucide.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/geni.css">
 <style>
   :root {
@@ -41,9 +44,12 @@
     padding-bottom: clamp(14px, 2vw, 22px); border-bottom: 1px solid var(--line); margin-bottom: clamp(14px, 2vw, 22px);
   }
   .brand { display: flex; align-items: center; gap: 16px; }
-  .gp-logo { display: flex; align-items: center; font-weight: 800; font-size: clamp(18px, 2.2vw, 24px); letter-spacing: -.01em; white-space: nowrap; }
+  .gp-logo {
+    display: flex; align-items: center; font-family: 'Poppins', system-ui, sans-serif; font-weight: 900;
+    font-size: clamp(18px, 2.2vw, 24px); letter-spacing: -.01em; white-space: nowrap;
+  }
   .gp-logo .g { color: var(--ink); }
-  .gp-logo .p { background: #2563eb; color: #fff; padding: 1px 9px 3px; border-radius: 7px; margin-left: 4px; }
+  .gp-logo .p { background: #2563eb; color: #fff; padding: 2px 10px 4px; border-radius: 8px; margin-left: 5px; }
   .brand .tag {
     font-size: 12px; color: var(--muted); letter-spacing: .16em; text-transform: uppercase; font-weight: 700;
     padding-left: 16px; margin-left: 2px; border-left: 1px solid var(--line);
@@ -179,11 +185,36 @@
   .spotlight-avatar {
     width: 84px; height: 84px; border-radius: 999px; margin: 0 auto 16px; background-size: cover; background-position: center;
     display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #000; border: 2px solid var(--line);
+    position: relative;
   }
-  .spotlight-title { font-size: clamp(22px, 3vw, 34px); font-weight: 800; margin-bottom: 18px; }
+  .spotlight-avatar::after {
+    content: ""; position: absolute; inset: -8px; border-radius: 999px; border: 3px solid var(--ok); opacity: 0;
+  }
+  .spotlight-card.show .spotlight-avatar::after { animation: spotlightRing 1.3s ease-out 2; }
+  @keyframes spotlightRing { 0% { opacity: .85; transform: scale(1); } 100% { opacity: 0; transform: scale(1.7); } }
+  .spotlight-title { font-size: clamp(22px, 3vw, 34px); font-weight: 800; margin-bottom: 12px; }
+  .spotlight-points {
+    display: inline-flex; align-items: center; gap: 6px; margin-bottom: 18px;
+    font-size: 13px; font-weight: 800; color: var(--ok); border: 1px solid var(--ok); border-radius: 999px; padding: 5px 16px;
+  }
+  .spotlight-points[hidden] { display: none; }
+  .spotlight-points svg.lucide { width: 14px; height: 14px; }
   .spotlight-fields { display: flex; justify-content: center; gap: clamp(20px,4vw,48px); flex-wrap: wrap; }
   .spotlight-fields .field .l { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
   .spotlight-fields .field .v { font-size: 17px; font-weight: 700; margin-top: 4px; }
+  .spotlight-recap { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); text-align: left; }
+  .spotlight-recap .recap-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; margin-bottom: 8px;
+  }
+  .recap-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; }
+  .recap-row .recap-name { font-weight: 700; flex: none; min-width: 90px; }
+  .recap-row .recap-task { color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .recap-row .recap-chip {
+    font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; border: 1px solid currentColor; flex: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .recap-row .recap-chip.ok { color: var(--ok); } .recap-row .recap-chip.warn { color: var(--warn); }
+  .recap-row .recap-chip.danger { color: var(--danger); } .recap-row .recap-chip.neutral { color: var(--muted); }
   .spotlight-progress { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--ok); width: 100%; }
   .spotlight-progress.run { animation: spotlightShrink 7s linear forwards; }
   @keyframes spotlightShrink { from { width: 100%; } to { width: 0%; } }
@@ -220,10 +251,12 @@
       <div class="spotlight-ribbon"><i data-lucide="check-circle-2"></i> Tâche terminée</div>
       <div class="spotlight-avatar" id="spotlightAvatar"></div>
       <div class="spotlight-title" id="spotlightTitle"></div>
+      <div class="spotlight-points" id="spotlightPoints" hidden></div>
       <div class="spotlight-fields">
         <div class="field"><div class="l">Réalisée par</div><div class="v" id="spotlightPerson"></div></div>
         <div class="field"><div class="l">Temps alloué</div><div class="v" id="spotlightDuration"></div></div>
       </div>
+      <div class="spotlight-recap" id="spotlightRecap"></div>
       <div class="spotlight-progress" id="spotlightProgress"></div>
     </div>
   </div>
@@ -332,6 +365,37 @@
       spotlightBusy = true;
       showSpotlight(spotlightQueue.shift());
     }
+    const POINTS_PER_ON_TIME_TASK = 10; // doit rester aligné avec app/routers/tasks.py
+
+    function renderSpotlightRecap(others) {
+      const wrap = document.getElementById("spotlightRecap");
+      if (!others.length) {
+        wrap.innerHTML = `<div class="recap-title">Pendant ce temps…</div>
+          <div class="recap-row" style="color:var(--ok);font-weight:700;">${icon("check")} Toutes les autres tâches sont à jour.</div>`;
+        lucide.createIcons();
+        return;
+      }
+      const shown = others.slice(0, 4);
+      wrap.innerHTML = `<div class="recap-title">Pendant ce temps… (${others.length} tâche${others.length > 1 ? "s" : ""} encore active${others.length > 1 ? "s" : ""})</div>` +
+        shown.map(o => {
+          const n = (o.assigned_users || []).map(u => u.prenom).join(" et ") || "Non affilié";
+          const ms = o.date_fin_prevue ? (new Date(o.date_fin_prevue) - new Date()) : null;
+          const cls = urgency(ms);
+          const chip = ms === null ? `${o.minutes_allouees} min` : fmt(ms);
+          return `<div class="recap-row"><span class="recap-name">${escapeHtml(n)}</span><span class="recap-task">${escapeHtml(o.titre)}</span><span class="recap-chip ${cls}">${chip}</span></div>`;
+        }).join("");
+    }
+
+    function speakRecap(others) {
+      if (!others.length) return; // déjà félicité à l'oral, pas besoin d'ajouter "tout est à jour"
+      if (others.length <= 2) {
+        const parts = others.map(o => `${namesOf(o)} sur ${o.titre}`);
+        speak(`Pendant ce temps, ${parts.join(", et ")} ${others.length > 1 ? "sont" : "est"} encore en cours.`);
+      } else {
+        speak(`Il reste encore ${others.length} tâches actives ou à venir.`);
+      }
+    }
+
     function showSpotlight(t) {
       const people = t.assigned_users || [];
       const names = people.map(u => `${u.prenom} ${u.nom}`).join(", ") || "Non affilié";
@@ -343,15 +407,30 @@
         ? `<div class="spotlight-avatar" id="spotlightAvatar" style="${first.photo_url ? `background-image:url('${first.photo_url}')` : `background:${colorFor(first.id)}`}">${first.photo_url ? "" : initials(first)}</div>`
         : `<div class="spotlight-avatar" id="spotlightAvatar" style="background:${colorFor(t.id)}">✓</div>`;
 
+      // Points de ponctualité (même règle que le backend : terminée avant l'échéance)
+      const onTime = t.date_fin_reelle && t.date_fin_prevue && new Date(t.date_fin_reelle) <= new Date(t.date_fin_prevue);
+      const pointsEl = document.getElementById("spotlightPoints");
+      pointsEl.hidden = !onTime;
+      if (onTime) pointsEl.innerHTML = `${icon("trophy")} +${POINTS_PER_ON_TIME_TASK} points ${people.length > 1 ? "pour l'équipe" : "gagnés"}`;
+
+      // Récap des autres tâches encore actives, pendant que celle-ci se termine
+      const others = tasks.filter(o => o.id !== t.id && ["en_cours", "en_retard", "a_faire"].includes(o.statut));
+      renderSpotlightRecap(others);
+
       const backdrop = document.getElementById("spotlightBackdrop");
       const card = document.getElementById("spotlightCard");
       const bar = document.getElementById("spotlightProgress");
       backdrop.hidden = false;
       bar.classList.remove("run"); void bar.offsetWidth; bar.classList.add("run");
+      card.classList.remove("show"); void card.offsetWidth;
       requestAnimationFrame(() => card.classList.add("show"));
+      lucide.createIcons();
 
       const firstName = first ? first.prenom : "Un collègue";
-      speak(`${firstName} a terminé la tâche : ${t.titre}.`);
+      let sentence = `${firstName} a terminé la tâche : ${t.titre}.`;
+      if (onTime) sentence += ` Bravo, ${POINTS_PER_ON_TIME_TASK} points gagnés !`;
+      speak(sentence);
+      speakRecap(others);
 
       setTimeout(() => {
         card.classList.remove("show");

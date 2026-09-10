@@ -14,6 +14,8 @@ from app.websocket_manager import manager
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["tâches"])
 
+POINTS_PER_ON_TIME_TASK = 10
+
 
 async def _get_task_with_users(db: AsyncSession, task_id: uuid.UUID) -> Task:
     query = (
@@ -26,6 +28,14 @@ async def _get_task_with_users(db: AsyncSession, task_id: uuid.UUID) -> Task:
     if not task:
         raise HTTPException(404, "Tâche introuvable")
     return task
+
+
+def _as_utc(dt: datetime) -> datetime:
+    """SQLite ne conserve pas le fuseau horaire des DateTime(timezone=True) une
+    fois relus depuis la base : on retombe sur un datetime naïf. On le
+    réinterprète comme UTC (ce qu'il est toujours ici) pour pouvoir comparer
+    en toute sécurité avec un datetime fraîchement créé, lui, tz-aware."""
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 def _to_out(task: Task) -> TaskOut:
@@ -125,6 +135,15 @@ async def complete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     task = await _get_task_with_users(db, task_id)
     task.date_fin_reelle = datetime.now(timezone.utc)
     task.statut = TaskStatus.terminee
+
+    # Points de ponctualité : la tâche est terminée dans le temps qui lui était
+    # alloué (voir docs/CONCEPTION.md). Attribués à chaque personne affiliée,
+    # cumulés sur User.points pour être consultés depuis le back-office.
+    on_time = task.date_fin_prevue is not None and _as_utc(task.date_fin_reelle) <= _as_utc(task.date_fin_prevue)
+    if on_time:
+        for assignment in task.assignments:
+            assignment.user.points += POINTS_PER_ON_TIME_TASK
+
     await db.commit()
     task = await _get_task_with_users(db, task_id)
     await _broadcast("task.completed", task)

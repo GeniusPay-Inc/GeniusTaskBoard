@@ -30,6 +30,7 @@ class UserOut(BaseModel):
     role: UserRole
     statut: UserStatus
     photo_url: str | None = None
+    points: int = 0
     created_at: datetime
 
 

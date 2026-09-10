@@ -29,3 +29,14 @@ async def init_db() -> None:
     """Crée les tables au démarrage si elles n'existent pas encore."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Rustine dev pour les colonnes ajoutées après le premier déploiement
+    # (à remplacer par une vraie migration Alembic en prod).
+    from sqlalchemy import text
+    from sqlalchemy.exc import OperationalError
+
+    async with engine.begin() as conn:
+        try:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN points INTEGER NOT NULL DEFAULT 0"))
+        except OperationalError:
+            pass  # colonne déjà présente
