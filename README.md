@@ -100,23 +100,15 @@ d'un disque vide.**
 
 Railway construit directement l'image à partir du `Dockerfile` — il ne lit
 **pas** `docker-compose.yml` ni le script `scripts/migrate-to-named-volumes.sh`
-(qui ne s'appliquent qu'à un déploiement manuel décrit plus bas). Sur Railway,
-le stockage persistant se configure depuis le dashboard :
+(qui ne s'appliquent qu'à un déploiement manuel décrit plus bas). Sans volume
+attaché à `/app/data`, chaque redéploiement (nouveau build, push sur la
+branche connectée, redémarrage) repart d'un système de fichiers vierge — c'est
+ce qui explique la perte de la base à chaque déploiement.
 
-1. Ouvrir le service API → **Settings → Persistent Storage** (visible dans le
-   menu latéral).
-2. Ajouter un volume et le monter sur **`/app/data`**.
-3. Redéployer (Railway relance automatiquement le conteneur après l'ajout
-   d'un volume). Le volume est vide au premier montage — le personnel et les
-   tâches actuellement en ligne devront être ressaisis une fois, puis ils
-   persisteront à tous les déploiements suivants.
-4. Domaine et TLS pour `task.geniuspay.tech` se configurent dans **Settings →
-   Domains**, indépendamment de Caddy (le service `caddy` de
-   `docker-compose.yml` n'est pas utilisé sur Railway).
-
-Sans volume attaché à `/app/data`, chaque redéploiement (nouveau build, push
-sur la branche connectée, redémarrage) repart d'un système de fichiers vierge
-— c'est ce qui explique la perte de la base à chaque déploiement.
+**Procédure complète, définitive et à ne faire qu'une seule fois** (dashboard
+Railway, checklist de vérification avant de ressaisir les données réelles,
+checklist de mise en production) : voir
+[`docs/DEPLOY_RAILWAY.md`](docs/DEPLOY_RAILWAY.md).
 
 ### Sur un VPS / serveur géré à la main (docker-compose)
 
