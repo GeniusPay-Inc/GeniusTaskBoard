@@ -186,6 +186,7 @@
   .card.en_cours { border-left-color: var(--brand); }
   .card.en_retard { border-left-color: var(--danger); animation: pulseCard 1.6s ease-in-out infinite; }
   .card.terminee { border-left-color: var(--ok); }
+  .card.archivee { border-left-color: var(--muted); opacity: .7; }
   @keyframes pulseCard { 0%,100% { box-shadow: 0 1px 2px var(--shadow); } 50% { box-shadow: 0 0 0 3px rgba(220,38,38,.35); } }
 
   .card .title { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; line-height: 1.35; }
@@ -260,6 +261,19 @@
   .modal textarea { resize: vertical; min-height: 60px; }
   .modal .checks { display: flex; flex-wrap: wrap; gap: 8px; max-height: 140px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
   .modal .checks label { display: flex; align-items: center; gap: 6px; font-weight: 400; font-size: 13px; color: var(--ink); margin: 0; }
+
+  /* ---------- Liste déroulante d'affiliation (personnel) ---------- */
+  .assignee-dropdown { border: 1px solid var(--border); border-radius: 8px; }
+  .assignee-dropdown summary {
+    cursor: pointer; padding: 9px 10px; font-size: 14px; color: var(--ink); list-style: none;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; border-radius: 8px;
+  }
+  .assignee-dropdown summary span.txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .assignee-dropdown summary::-webkit-details-marker { display: none; }
+  .assignee-dropdown summary::after { content: "▾"; color: var(--muted); font-size: 11px; flex: none; }
+  .assignee-dropdown[open] summary::after { content: "▴"; }
+  .assignee-dropdown[open] summary { border-bottom: 1px solid var(--border); border-radius: 8px 8px 0 0; }
+  .assignee-dropdown .checks { border: none; border-radius: 0 0 8px 8px; margin: 0; }
   .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
   .photo-picker { display: flex; align-items: center; gap: 12px; }
   .photo-picker .preview {
@@ -267,6 +281,22 @@
     display: flex; align-items: center; justify-content: center; color: var(--muted); flex: none;
   }
   .photo-picker .preview svg.lucide { width: 24px; height: 24px; }
+
+  /* ---------- Archives ---------- */
+  .archive-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .archive-toolbar input[type=text], .archive-toolbar select {
+    padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13.5px; font-family: inherit;
+    background: var(--card-bg); color: var(--ink);
+  }
+  .archive-toolbar input[type=text] { flex: 1; min-width: 180px; }
+  .archive-row {
+    display: flex; align-items: center; gap: 16px; background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; flex-wrap: wrap;
+  }
+  .archive-row .archive-main { flex: 1; min-width: 180px; }
+  .archive-row .archive-title { font-weight: 700; font-size: 14px; }
+  .archive-row .archive-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .archive-row .archive-date { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
   .toast {
     position: fixed; bottom: 20px; right: 20px; background: var(--ok); color: #fff;
@@ -317,6 +347,7 @@
       <button class="nav-item" data-view="dashboard"><span class="ic"><i data-lucide="layout-dashboard"></i></span> Dashboard</button>
       <button class="nav-item" data-view="tasks"><span class="ic"><i data-lucide="clipboard-list"></i></span> Tâches</button>
       <button class="nav-item" data-view="employees"><span class="ic"><i data-lucide="users"></i></span> Employés</button>
+      <button class="nav-item" data-view="archives"><span class="ic"><i data-lucide="archive"></i></span> Archives</button>
     </nav>
 
     <main class="content">
@@ -350,6 +381,23 @@
         <div class="employee-grid" id="employeeGrid"></div>
       </section>
 
+      <!-- ================= Archives ================= -->
+      <section class="view" id="view-archives">
+        <div class="view-head">
+          <div><h2>Archives</h2><p>Tâches archivées — recherche, filtre et restauration</p></div>
+        </div>
+        <div class="archive-toolbar">
+          <input type="text" id="archiveSearch" placeholder="Rechercher un titre…" />
+          <select id="archiveEmployeeFilter"><option value="">Tout le personnel</option></select>
+          <select id="archiveSort">
+            <option value="recent">Plus récentes d'abord</option>
+            <option value="old">Plus anciennes d'abord</option>
+            <option value="titre">Titre (A→Z)</option>
+          </select>
+        </div>
+        <div id="archiveList"></div>
+      </section>
+
     </main>
   </div>
 
@@ -365,7 +413,10 @@
         <label>Minutes allouées (temps confié pour la réalisation)</label>
         <input type="number" id="taskMinutes" min="1" required value="15" />
         <label>Affilier à</label>
-        <div class="checks" id="taskUserChecks"><span class="empty">Aucun personnel — ajoutez d'abord une personne.</span></div>
+        <details class="assignee-dropdown" id="taskAssigneeDropdown">
+          <summary><span class="txt" id="taskAssigneeSummary">Sélectionner le personnel</span></summary>
+          <div class="checks" id="taskUserChecks"><span class="empty">Aucun personnel — ajoutez d'abord une personne.</span></div>
+        </details>
         <div class="modal-footer">
           <button type="button" class="ghost" id="cancelTaskModal">Annuler</button>
           <button class="primary" type="submit">Créer la tâche</button>
@@ -414,7 +465,19 @@
       { key: "en_cours", label: "En cours", flag: "#2563eb" },
       { key: "en_retard", label: "En retard", flag: "#dc2626" },
       { key: "terminee", label: "Terminées", flag: "#16a34a" },
+      { key: "archivee", label: "Archivées", flag: "#64748b" },
     ];
+    // Déplacements pris en charge par glisser-déposer : "origine->destination" -> action à appeler.
+    const DRAG_TRANSITIONS = {
+      "a_faire->en_cours": "start",
+      "a_faire->archivee": "archive",
+      "en_cours->terminee": "complete",
+      "en_cours->archivee": "archive",
+      "en_retard->terminee": "complete",
+      "en_retard->archivee": "archive",
+      "terminee->archivee": "archive",
+      "archivee->a_faire": "restore",
+    };
     let users = [];
     let tasks = [];
     let lastAuthError = false;
@@ -519,6 +582,12 @@
       return `<div class="avatar" style="${avatarStyle(u)}" title="${u.prenom} ${u.nom}">${u.photo_url ? "" : initials(u)}</div>`;
     }
     function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+    function formatDateFr(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) +
+        " · " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    }
 
     // ---------- Thème jour / nuit (à plat, sans dégradé) ----------
     function applyTheme(t) {
@@ -592,6 +661,7 @@
 
     // ---------- Board (Tâches) ----------
     function timeChip(t) {
+      if (t.statut === "archivee") return `<span class="time-chip neutral btn-ic">${icon("archive")} archivée</span>`;
       if (t.statut === "terminee") return `<span class="time-chip ok btn-ic">${icon("check")} terminée</span>`;
       if (!t.date_fin_prevue) return `<span class="time-chip neutral">${t.minutes_allouees} min</span>`;
       const ms = new Date(t.date_fin_prevue) - new Date();
@@ -606,7 +676,8 @@
       const actions = [];
       if (t.statut === "a_faire") actions.push(`<button class="primary small btn-ic" onclick="startTask('${t.id}')">${icon("play")} Démarrer</button>`);
       if (t.statut === "en_cours" || t.statut === "en_retard") actions.push(`<button class="primary small btn-ic" onclick="completeTask('${t.id}')">${icon("check")} Terminer</button>`);
-      if (t.statut !== "archivee") actions.push(`<button class="ghost small" onclick="archiveTask('${t.id}')">${icon("archive")}</button>`);
+      if (t.statut === "archivee") actions.push(`<button class="ghost small btn-ic" onclick="restoreTask('${t.id}')">${icon("rotate-ccw")} Restaurer</button>`);
+      else actions.push(`<button class="ghost small" onclick="archiveTask('${t.id}')" title="Archiver">${icon("archive")}</button>`);
       return `
         <div class="card ${t.statut}" draggable="true" data-id="${t.id}" data-statut="${t.statut}">
           <div class="title">${escapeHtml(t.titre)}</div>
@@ -668,33 +739,55 @@
           const data = JSON.parse(e.dataTransfer.getData("text/plain") || "{}");
           const to = col.dataset.status;
           if (!data.id || data.from === to) return;
+          const action = DRAG_TRANSITIONS[`${data.from}->${to}`];
+          if (!action) { showToast(dragBlockedMessage(data.from, to), ""); return; }
           try {
-            if (data.from === "a_faire" && to === "en_cours") await startTask(data.id, false);
-            else if ((data.from === "en_cours" || data.from === "en_retard") && to === "terminee") await completeTask(data.id, false);
-            else { showToast("Déplacement non pris en charge — utilisez les boutons de la carte.", ""); return; }
+            if (action === "start") await startTask(data.id, false);
+            else if (action === "complete") await completeTask(data.id, false);
+            else if (action === "archive") await archiveTask(data.id, false);
+            else if (action === "restore") await restoreTask(data.id, false);
             await loadAll();
           } catch (err) { showToast(err.message, "overdue"); }
         });
       });
     }
 
+    function dragBlockedMessage(from, to) {
+      if (from === "archivee") return "Pour restaurer une tâche archivée, déposez-la sur « À faire ».";
+      if (to === "en_retard") return "Le statut « En retard » est calculé automatiquement, on ne peut pas l'imposer.";
+      if (from === "terminee") return "Une tâche terminée ne peut être que archivée.";
+      return "Ce déplacement n'est pas pris en charge — utilisez les boutons de la carte.";
+    }
+
     // ---------- Actions tâches ----------
     async function startTask(id, reload = true) { try { await api(`/tasks/${id}/start`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
     async function completeTask(id, reload = true) { try { await api(`/tasks/${id}/complete`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
-    async function archiveTask(id) { try { await api(`/tasks/${id}/archive`, { method: "POST" }); await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
+    async function archiveTask(id, reload = true) { try { await api(`/tasks/${id}/archive`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
+    async function restoreTask(id, reload = true) { try { await api(`/tasks/${id}/restore`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
     async function archiveUser(id) { try { await api(`/users/${id}/archive`, { method: "POST" }); await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
 
     // ---------- Modale tâche ----------
+    function updateAssigneeSummary() {
+      const checked = Array.from(document.querySelectorAll("#taskUserChecks input:checked"));
+      const summary = document.getElementById("taskAssigneeSummary");
+      if (!checked.length) { summary.textContent = "Sélectionner le personnel"; return; }
+      const names = checked.map(cb => cb.parentElement.textContent.trim());
+      summary.textContent = checked.length === 1 ? names[0] : `${checked.length} sélectionnés : ${names.join(", ")}`;
+    }
+    document.getElementById("taskUserChecks").addEventListener("change", updateAssigneeSummary);
+
     function openTaskModal() {
       const checks = document.getElementById("taskUserChecks");
       const actifs = users.filter(u => u.statut === "actif");
       checks.innerHTML = actifs.length
         ? actifs.map(u => `<label><input type="checkbox" value="${u.id}" /> ${u.prenom} ${u.nom}</label>`).join("")
         : '<span class="empty">Aucun personnel actif — ajoutez d\'abord une personne.</span>';
+      document.getElementById("taskAssigneeDropdown").open = false;
+      updateAssigneeSummary();
       document.getElementById("taskModalBackdrop").hidden = false;
       document.getElementById("taskTitre").focus();
     }
-    function closeTaskModal() { document.getElementById("taskModalBackdrop").hidden = true; document.getElementById("taskForm").reset(); }
+    function closeTaskModal() { document.getElementById("taskModalBackdrop").hidden = true; document.getElementById("taskForm").reset(); updateAssigneeSummary(); }
     document.getElementById("openTaskModalBtn").addEventListener("click", openTaskModal);
     document.getElementById("cancelTaskModal").addEventListener("click", closeTaskModal);
     document.getElementById("taskModalBackdrop").addEventListener("click", (e) => { if (e.target.id === "taskModalBackdrop") closeTaskModal(); });
@@ -740,6 +833,64 @@
         </button>`;
       document.getElementById("openUserModalBtn").addEventListener("click", openUserModal);
     }
+
+    // ---------- Archives ----------
+    // "Stocker et classer" les tâches archivées : recherche par titre, filtre
+    // par personnel affilié, tri par date d'archivage (updated_at) ou titre.
+    function renderArchives() {
+      const archived = tasks.filter(t => t.statut === "archivee");
+
+      const empSelect = document.getElementById("archiveEmployeeFilter");
+      const prevEmp = empSelect.value;
+      const employeesInArchive = new Map();
+      archived.forEach(t => (t.assigned_users || []).forEach(u => employeesInArchive.set(u.id, `${u.prenom} ${u.nom}`)));
+      empSelect.innerHTML = '<option value="">Tout le personnel</option>' +
+        Array.from(employeesInArchive.entries()).map(([id, name]) => `<option value="${id}">${escapeHtml(name)}</option>`).join("");
+      empSelect.value = prevEmp;
+
+      const search = (document.getElementById("archiveSearch").value || "").trim().toLowerCase();
+      const empFilter = empSelect.value;
+      const sort = document.getElementById("archiveSort").value;
+
+      let filtered = archived.filter(t => {
+        if (search && !t.titre.toLowerCase().includes(search)) return false;
+        if (empFilter && !(t.assigned_users || []).some(u => u.id === empFilter)) return false;
+        return true;
+      });
+
+      filtered.sort((a, b) => {
+        if (sort === "titre") return a.titre.localeCompare(b.titre);
+        const da = new Date(a.updated_at), db = new Date(b.updated_at);
+        return sort === "old" ? da - db : db - da;
+      });
+
+      const list = document.getElementById("archiveList");
+      if (!archived.length) {
+        list.innerHTML = `<p style="font-size:13px;color:var(--muted);">Aucune tâche archivée pour le moment.</p>`;
+        return;
+      }
+      if (!filtered.length) {
+        list.innerHTML = `<p style="font-size:13px;color:var(--muted);">Aucune tâche archivée ne correspond à ces critères.</p>`;
+        return;
+      }
+      list.innerHTML = filtered.map(t => {
+        const names = (t.assigned_users || []).map(u => `${u.prenom} ${u.nom}`).join(", ") || "Non affilié";
+        return `
+          <div class="archive-row">
+            <div class="archive-main">
+              <div class="archive-title">${escapeHtml(t.titre)}</div>
+              <div class="archive-meta">${escapeHtml(names)} · ${t.minutes_allouees} min alloué${t.minutes_allouees > 1 ? "s" : ""}</div>
+            </div>
+            <div class="archive-date">Archivée le ${formatDateFr(t.updated_at)}</div>
+            <button class="ghost small btn-ic" onclick="restoreTask('${t.id}')">${icon("rotate-ccw")} Restaurer</button>
+          </div>`;
+      }).join("");
+      lucide.createIcons();
+    }
+    ["archiveSearch", "archiveEmployeeFilter", "archiveSort"].forEach(id => {
+      document.getElementById(id).addEventListener("input", renderArchives);
+      document.getElementById(id).addEventListener("change", renderArchives);
+    });
 
     let avatarTargetUserId = null;
     function pickAvatar(userId) {
@@ -806,7 +957,7 @@
     async function loadAll() {
       try {
         [users, tasks] = await Promise.all([api("/users"), api("/tasks")]);
-        renderDashboard(); renderBoard(); renderEmployees();
+        renderDashboard(); renderBoard(); renderEmployees(); renderArchives();
         lucide.createIcons();
       } catch (e) { console.error(e); }
     }

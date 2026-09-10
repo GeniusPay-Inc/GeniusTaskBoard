@@ -139,3 +139,19 @@ async def archive_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     task = await _get_task_with_users(db, task_id)
     await _broadcast("task.updated", task)
     return _to_out(task)
+
+
+@router.post("/{task_id}/restore", response_model=TaskOut, dependencies=[Depends(require_api_key)])
+async def restore_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Sort une tâche archivée de l'archive et la remet à zéro (à faire)."""
+    task = await _get_task_with_users(db, task_id)
+    if task.statut != TaskStatus.archivee:
+        raise HTTPException(400, "Seule une tâche archivée peut être restaurée")
+    task.statut = TaskStatus.a_faire
+    task.date_debut = None
+    task.date_fin_prevue = None
+    task.date_fin_reelle = None
+    await db.commit()
+    task = await _get_task_with_users(db, task_id)
+    await _broadcast("task.updated", task)
+    return _to_out(task)

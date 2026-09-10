@@ -123,6 +123,18 @@ Chaque tâche terminée déclenche aussi un **spotlight** : une carte plein
 gabarits fournis (bandeau coloré, champs clé/valeur), affichée ~7s puis
 enchaînée avec la suivante si plusieurs tâches se terminent d'affilée.
 
+## Tableau Kanban et archives
+
+Le tableau (`Tâches`) a 5 colonnes : À faire, En cours, En retard, Terminées,
+Archivées. Le glisser-déposer gère tous les déplacements qui ont un sens
+métier (démarrer, terminer, archiver, restaurer une tâche archivée vers
+« À faire ») ; un déplacement sans action correspondante affiche un message
+explicatif au lieu d'échouer silencieusement.
+
+La vue `Archives` liste les tâches archivées avec recherche par titre, filtre
+par personnel affilié et tri par date d'archivage (`updated_at`) ou par
+titre — chaque tâche peut y être restaurée en un clic.
+
 ## Structure
 
 Voir `docs/CONCEPTION.md` §5.
