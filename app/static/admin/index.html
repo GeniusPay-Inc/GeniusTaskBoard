@@ -201,6 +201,7 @@
 
   .card .title { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; line-height: 1.35; }
   .card .desc { font-size: 12px; color: var(--muted); margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .meta-dates { font-size: 10.5px; color: var(--muted); margin-bottom: 6px; }
   .card .meta-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
   .avatars { display: flex; }
   .avatar {
@@ -248,6 +249,7 @@
   .employee-card .role { font-size: 12px; color: var(--muted); margin-top: 2px; margin-bottom: 10px; }
   .employee-card .load { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
   .employee-card .load b { color: var(--ink); }
+  .employee-card .dates { font-size: 10.5px; color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
   .employee-card .points {
     display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; color: var(--warn);
     background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 999px; padding: 2px 10px; margin-bottom: 10px;
@@ -605,6 +607,17 @@
       return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) +
         " · " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
     }
+    function formatDateShortFr(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) +
+        " · " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    }
+    // Deux dates sont considérées "identiques" si elles ne diffèrent que de
+    // quelques secondes (arrondis / écarts d'écriture en base).
+    function sameInstant(isoA, isoB) {
+      return Math.abs(new Date(isoA) - new Date(isoB)) < 5000;
+    }
 
     // ---------- Thème jour / nuit (à plat, sans dégradé) ----------
     function applyTheme(t) {
@@ -707,12 +720,18 @@
       const actions = [];
       if (t.statut === "a_faire") actions.push(`<button class="primary small btn-ic" onclick="startTask('${t.id}')">${icon("play")} Démarrer</button>`);
       if (t.statut === "en_cours" || t.statut === "en_retard") actions.push(`<button class="primary small btn-ic" onclick="completeTask('${t.id}')">${icon("check")} Terminer</button>`);
-      if (t.statut === "archivee") actions.push(`<button class="ghost small btn-ic" onclick="restoreTask('${t.id}')">${icon("rotate-ccw")} Restaurer</button>`);
-      else actions.push(`<button class="ghost small" onclick="archiveTask('${t.id}')" title="Archiver">${icon("archive")}</button>`);
+      if (t.statut === "archivee") {
+        actions.push(`<button class="ghost small btn-ic" onclick="restoreTask('${t.id}')">${icon("rotate-ccw")} Restaurer</button>`);
+        actions.push(`<button class="ghost small" onclick="deleteTask('${t.id}')" title="Supprimer définitivement">${icon("trash-2")}</button>`);
+      } else actions.push(`<button class="ghost small" onclick="archiveTask('${t.id}')" title="Archiver">${icon("archive")}</button>`);
+      const dates = sameInstant(t.created_at, t.updated_at)
+        ? `Créée le ${formatDateShortFr(t.created_at)}`
+        : `Créée le ${formatDateShortFr(t.created_at)} · modifiée le ${formatDateShortFr(t.updated_at)}`;
       return `
         <div class="card ${t.statut}" draggable="true" data-id="${t.id}" data-statut="${t.statut}">
           <div class="title">${escapeHtml(t.titre)}</div>
           ${t.description ? `<div class="desc">${escapeHtml(t.description)}</div>` : ""}
+          <div class="meta-dates">${dates}</div>
           <div class="meta-row">
             <div class="avatars">${av || '<span style="font-size:11px;color:var(--muted);">Non affilié</span>'}</div>
             ${timeChip(t)}
@@ -795,7 +814,18 @@
     async function completeTask(id, reload = true) { try { await api(`/tasks/${id}/complete`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
     async function archiveTask(id, reload = true) { try { await api(`/tasks/${id}/archive`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
     async function restoreTask(id, reload = true) { try { await api(`/tasks/${id}/restore`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
+    async function deleteTask(id) {
+      const t = tasks.find(t => t.id === id);
+      if (!confirm(`Supprimer définitivement la tâche « ${t ? t.titre : ""} » ? Cette action est irréversible.`)) return;
+      try { await api(`/tasks/${id}`, { method: "DELETE" }); await loadAll(); } catch (e) { showToast(e.message, "overdue"); }
+    }
     async function archiveUser(id) { try { await api(`/users/${id}/archive`, { method: "POST" }); await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
+    async function deleteUser(id) {
+      const u = users.find(u => u.id === id);
+      const nom = u ? `${u.prenom} ${u.nom}` : "";
+      if (!confirm(`Supprimer définitivement « ${nom} » ? Cette action est irréversible (l'historique des tâches déjà terminées est conservé, sans l'affiliation).`)) return;
+      try { await api(`/users/${id}`, { method: "DELETE" }); await loadAll(); } catch (e) { showToast(e.message, "overdue"); }
+    }
 
     // ---------- Modale tâche ----------
     function updateAssigneeSummary() {
@@ -856,7 +886,13 @@
             <div class="role">${u.role}</div>
             <div class="load"><b>${n}</b> tâche${n > 1 ? "s" : ""} active${n > 1 ? "s" : ""}</div>
             <div class="points btn-ic">${icon("award")} ${u.points} pt${u.points > 1 ? "s" : ""}</div>
-            ${u.statut === "actif" ? `<button class="danger-text" onclick="archiveUser('${u.id}')">Archiver</button>` : `<span style="font-size:11.5px;color:var(--muted);">Archivé</span>`}
+            <div class="dates">
+              Inscrit·e le ${formatDateShortFr(u.created_at)}
+              ${sameInstant(u.created_at, u.updated_at) ? "" : `<br>Mis à jour le ${formatDateShortFr(u.updated_at)}`}
+            </div>
+            ${u.statut === "actif"
+              ? `<button class="danger-text" onclick="archiveUser('${u.id}')">Archiver</button>`
+              : `<span style="font-size:11.5px;color:var(--muted);">Archivé</span> · <button class="danger-text" onclick="deleteUser('${u.id}')">Supprimer</button>`}
           </div>`;
       }).join("");
       grid.innerHTML = cards + `
@@ -1001,6 +1037,7 @@
         if (msg.type === "task.created") { showToast(`Nouvelle tâche : ${msg.task.titre}`, ""); beep(880, 200); }
         else if (msg.type === "task.completed") { showToast(`Tâche terminée : ${msg.task.titre}`, "completed"); beep(520, 250); }
         else if (msg.type === "task.overdue") { showToast(`Tâche en retard : ${msg.task.titre}`, "overdue"); beep(300, 350); }
+        else if (msg.type === "task.deleted") { showToast(`Tâche supprimée : ${msg.task.titre}`, ""); }
         loadAll();
       };
       ws.onclose = () => setTimeout(connectWS, 2000);

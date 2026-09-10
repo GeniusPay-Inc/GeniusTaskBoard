@@ -51,7 +51,7 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    assignments: Mapped[list["TaskAssignment"]] = relationship(back_populates="user")
+    assignments: Mapped[list["TaskAssignment"]] = relationship(back_populates="user", passive_deletes=True)
 
 
 class Task(Base):
