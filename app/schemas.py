@@ -67,6 +67,7 @@ class TaskOut(BaseModel):
     date_fin_prevue: datetime | None
     date_fin_reelle: datetime | None
     created_at: datetime
+    updated_at: datetime
     assigned_users: list[UserOut] = Field(default_factory=list)
 
 
