@@ -94,6 +94,8 @@ mais en production seul le trafic via Caddy (443) doit être exposé au public
   `lucide.createIcons()`), aucune dépendance locale à installer.
 - Logo : le lockup GeniusPay (`Genius` + badge `Pay`) est recréé en HTML/CSS
   directement dans les en-têtes (`.gp-logo`), pas une image — facile à retoucher.
+  Police **Poppins** (900) en CDN Google Fonts pour se rapprocher du rendu
+  arrondi du logo officiel.
 - Mascotte **Geni** : `app/static/shared/geni.js` + `geni.css`, servis via le
   mount `/assets`. C'est le composant SVG fourni par GeniusPay, réécrit en JS
   natif (le projet est un site statique FastAPI, sans Laravel/Alpine) :
@@ -119,9 +121,25 @@ bandeau « Activer le son » apparaît au chargement — à cliquer une fois sur
 l'écran TV pour débloquer les annonces et les bips.
 
 Chaque tâche terminée déclenche aussi un **spotlight** : une carte plein
-écran (photo/avatar, titre, personnel, temps alloué) reprenant le style des
-gabarits fournis (bandeau coloré, champs clé/valeur), affichée ~7s puis
-enchaînée avec la suivante si plusieurs tâches se terminent d'affilée.
+écran (photo/avatar mis en grand plan avec un anneau pulsé, titre, personnel,
+temps alloué) reprenant le style des gabarits fournis (bandeau coloré, champs
+clé/valeur), affichée ~7s puis enchaînée avec la suivante si plusieurs tâches
+se terminent d'affilée. Si la tâche est terminée dans les délais, un badge
+« +10 points gagnés » s'affiche et la voix l'annonce. Le spotlight inclut
+aussi un **récapitulatif** des autres tâches encore actives (« Pendant ce
+temps… ») avec le prénom, le titre et le temps restant de chaque personne pas
+encore terminée, annoncé oralement à la suite.
+
+## Points de ponctualité
+
+Chaque tâche terminée dans le temps qui lui était alloué (`date_fin_reelle`
+≤ `date_fin_prevue`) rapporte **10 points** à chaque personne affiliée
+(`User.points`, cumulé côté serveur dans `POST /tasks/{id}/complete`). Les
+points sont consultables :
+- sur chaque fiche employé (back-office, vue `Employés`) ;
+- dans un mini classement trié par points (back-office, vue `Dashboard` →
+  « Classement — points de ponctualité ») ;
+- via l'API (`points` dans `GET /api/v1/users`).
 
 ## Tableau Kanban et archives
 
