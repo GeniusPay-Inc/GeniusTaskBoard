@@ -232,14 +232,45 @@ points sont consultables :
 ## Tableau Kanban et archives
 
 Le tableau (`Tâches`) a 5 colonnes : À faire, En cours, En retard, Terminées,
-Archivées. Le glisser-déposer gère tous les déplacements qui ont un sens
-métier (démarrer, terminer, archiver, restaurer une tâche archivée vers
-« À faire ») ; un déplacement sans action correspondante affiche un message
-explicatif au lieu d'échouer silencieusement.
+Archivées. Chaque carte est un accordéon (cliquer l'en-tête pour déplier) —
+description, captures d'écran et actions n'apparaissent qu'à l'ouverture, pour
+garder le board compact. Le glisser-déposer gère tous les déplacements qui ont
+un sens métier (démarrer, terminer, archiver, restaurer une tâche archivée
+vers « À faire ») ; un déplacement sans action correspondante affiche un
+message explicatif au lieu d'échouer silencieusement.
+
+Le temps alloué se saisit en heures **et/ou** minutes (`taskHours` +
+`taskMinutes`, convertis en minutes côté client) ; l'affichage du compte à
+rebours passe automatiquement en `Hh MM:SS` au-delà d'une heure.
+
+Une tâche peut avoir jusqu'à 15 captures d'écran (JPEG/PNG/WebP, 5 Mo max
+chacune) : `POST /api/v1/tasks/{id}/images`, stockées comme de vrais fichiers
+sous `data/uploads/tasks/{id}/` (jamais en base64 dans la description — voir
+la note de performance ci-dessous) et affichées en vignettes sur la carte et
+l'écran TV, avec visionneuse plein écran au clic.
 
 La vue `Archives` liste les tâches archivées avec recherche par titre, filtre
-par personnel affilié et tri par date d'archivage (`updated_at`) ou par
-titre — chaque tâche peut y être restaurée en un clic.
+par personnel affilié, par date d'archivage, et tri (`updated_at` ou titre) —
+chaque tâche peut y être consultée en détail (« Voir », avec ses captures) ou
+restaurée en un clic.
+
+## Idempotence et fiabilité
+
+Chaque bouton d'action (démarrer/terminer/archiver/restaurer/supprimer) se
+désactive dès le clic pour empêcher un double-clic de partir deux fois — et
+n'est réactivé qu'en cas d'échec (un succès recharge la vue, qui régénère de
+toute façon des boutons neufs). Ce n'est qu'un filet côté interface : la
+vraie garantie est côté serveur — `start`/`complete`/`archive`
+(`app/routers/tasks.py`) sont eux-mêmes des no-op sûrs si rejoués sur une
+tâche déjà dans l'état visé (aucune double-attribution de points possible,
+même en cas de requête dupliquée par le réseau ou de deux personnes cliquant
+en même temps).
+
+**Note de performance** : les captures d'écran ne sont jamais encodées en
+base64 dans la description d'une tâche — cela alourdirait chaque chargement
+du tableau et de l'écran TV (repris à chaque action et à chaque événement
+WebSocket) au fur et à mesure que l'historique grandit. Elles vivent comme
+fichiers réels sous `data/uploads/`, référencés par une simple URL.
 
 ## Structure
 

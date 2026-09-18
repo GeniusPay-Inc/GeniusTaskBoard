@@ -1,20 +1,28 @@
+import json
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models import Task, TaskAssignment, TaskStatus, User
-from app.schemas import TaskAssign, TaskCreate, TaskOut, TaskUpdate
+from app.schemas import TaskAssign, TaskCreate, TaskOut, TaskUpdate, UserOut
 from app.security import require_api_key
 from app.websocket_manager import manager
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["tâches"])
 
 POINTS_PER_ON_TIME_TASK = 10
+
+TASK_IMAGE_DIR = Path("data/uploads/tasks")
+TASK_IMAGE_CONTENT_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+TASK_IMAGE_MAX_BYTES = 5 * 1024 * 1024  # 5 Mo
+TASK_IMAGE_MAX_COUNT = 15
 
 
 async def _get_task_with_users(db: AsyncSession, task_id: uuid.UUID) -> Task:
@@ -40,7 +48,10 @@ def _as_utc(dt: datetime) -> datetime:
 
 def _to_out(task: Task) -> TaskOut:
     out = TaskOut.model_validate(task)
-    out.assigned_users = [a.user for a in task.assignments]
+    # Passer par UserOut.model_validate() (plutôt qu'une simple affectation des
+    # objets ORM) pour que le validateur force_utc s'applique aussi ici — une
+    # affectation directe ne redéclenche pas la validation Pydantic.
+    out.assigned_users = [UserOut.model_validate(a.user) for a in task.assignments]
     return out
 
 
@@ -120,6 +131,10 @@ async def assign_task(task_id: uuid.UUID, payload: TaskAssign, db: AsyncSession 
 @router.post("/{task_id}/start", response_model=TaskOut, dependencies=[Depends(require_api_key)])
 async def start_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     task = await _get_task_with_users(db, task_id)
+    if task.statut == TaskStatus.en_cours:
+        # Idempotent : un double-clic ou une requête rejouée ne doit pas
+        # réinitialiser le chrono d'une tâche déjà démarrée.
+        return _to_out(task)
     now = datetime.now(timezone.utc)
     task.date_debut = now
     task.date_fin_prevue = now + timedelta(minutes=task.minutes_allouees)
@@ -133,6 +148,10 @@ async def start_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 @router.post("/{task_id}/complete", response_model=TaskOut, dependencies=[Depends(require_api_key)])
 async def complete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     task = await _get_task_with_users(db, task_id)
+    if task.statut == TaskStatus.terminee:
+        # Idempotent : évite de recalculer date_fin_reelle et surtout de
+        # réattribuer les points de ponctualité sur un double-clic/retry.
+        return _to_out(task)
     task.date_fin_reelle = datetime.now(timezone.utc)
     task.statut = TaskStatus.terminee
 
@@ -150,6 +169,37 @@ async def complete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     return _to_out(task)
 
 
+@router.post("/{task_id}/images", response_model=TaskOut, dependencies=[Depends(require_api_key)])
+async def upload_task_image(task_id: uuid.UUID, file: UploadFile, db: AsyncSession = Depends(get_db)):
+    """Ajoute une capture d'écran à la tâche (fichier réel sur disque, jamais
+    en base64 dans la description — voir la note sur Task.image_urls)."""
+    task = await _get_task_with_users(db, task_id)
+
+    existing = json.loads(task.image_urls) if task.image_urls else []
+    if len(existing) >= TASK_IMAGE_MAX_COUNT:
+        raise HTTPException(400, f"Maximum {TASK_IMAGE_MAX_COUNT} images par tâche")
+
+    ext = TASK_IMAGE_CONTENT_TYPES.get(file.content_type)
+    if not ext:
+        raise HTTPException(400, "Format d'image non supporté (jpeg, png ou webp uniquement)")
+
+    data = await file.read()
+    if len(data) > TASK_IMAGE_MAX_BYTES:
+        raise HTTPException(400, "Image trop volumineuse (5 Mo maximum)")
+
+    task_dir = TASK_IMAGE_DIR / str(task_id)
+    task_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4()}.{ext}"
+    (task_dir / filename).write_bytes(data)
+
+    existing.append(f"/uploads/tasks/{task_id}/{filename}?v={int(time.time())}")
+    task.image_urls = json.dumps(existing)
+    await db.commit()
+    task = await _get_task_with_users(db, task_id)
+    await _broadcast("task.updated", task)
+    return _to_out(task)
+
+
 @router.delete("/{task_id}", status_code=204, dependencies=[Depends(require_api_key)])
 async def delete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     """Suppression définitive (contrairement à /archive qui est réversible)."""
@@ -163,6 +213,8 @@ async def delete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 @router.post("/{task_id}/archive", response_model=TaskOut, dependencies=[Depends(require_api_key)])
 async def archive_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     task = await _get_task_with_users(db, task_id)
+    if task.statut == TaskStatus.archivee:
+        return _to_out(task)
     task.statut = TaskStatus.archivee
     await db.commit()
     task = await _get_task_with_users(db, task_id)

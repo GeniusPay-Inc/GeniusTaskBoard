@@ -71,8 +71,13 @@ async def init_db() -> None:
     from sqlalchemy import text
     from sqlalchemy.exc import OperationalError
 
+    patches = [
+        "ALTER TABLE users ADD COLUMN points INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE tasks ADD COLUMN image_urls TEXT",
+    ]
     async with engine.begin() as conn:
-        try:
-            await conn.execute(text("ALTER TABLE users ADD COLUMN points INTEGER NOT NULL DEFAULT 0"))
-        except OperationalError:
-            pass  # colonne déjà présente
+        for patch in patches:
+            try:
+                await conn.execute(text(patch))
+            except OperationalError:
+                pass  # colonne déjà présente

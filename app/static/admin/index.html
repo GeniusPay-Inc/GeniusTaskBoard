@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TaskBoard — Back-office</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <script src="https://unpkg.com/lucide@1.43.0/dist/umd/lucide.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -219,6 +222,20 @@
   .card .card-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
   .card .card-actions button { flex: 1; }
 
+  /* ---------- Carte de tâche accordéon (compact sur le board) ---------- */
+  .card.task-acc { padding: 0; overflow: hidden; }
+  .task-acc-head { padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; }
+  .task-acc-head:hover { background: var(--column-bg); }
+  .task-acc-left { display: flex; align-items: center; gap: 8px; overflow: hidden; min-width: 0; }
+  .task-acc-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .task-acc-right { display: flex; align-items: center; gap: 6px; flex: none; }
+  .task-acc-chevron { transition: transform .2s; color: var(--muted); display: inline-flex; align-items: center; }
+  .card.task-acc.open .task-acc-chevron { transform: rotate(180deg); }
+  .task-acc-body { display: none; padding: 0 10px 10px; }
+  .card.task-acc.open .task-acc-body { display: block; }
+  .task-images { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; }
+  .task-images img { height: 56px; border-radius: 6px; border: 1px solid var(--border); object-fit: cover; cursor: pointer; flex: none; }
+
   .add-card-btn {
     background: transparent; color: var(--muted); text-align: left; padding: 8px 6px; font-size: 12.5px;
     font-weight: 600; border-radius: 8px;
@@ -298,10 +315,20 @@
     display: flex; align-items: center; justify-content: center; color: var(--muted); flex: none;
   }
   .photo-picker .preview svg.lucide { width: 24px; height: 24px; }
+  .image-preview-list { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; }
+  .image-preview-list .thumb { position: relative; flex: none; }
+  .image-preview-list img { height: 60px; border-radius: 6px; border: 1px solid var(--border); object-fit: cover; }
+  .image-preview-list .remove {
+    position: absolute; top: -6px; right: -6px; background: var(--danger); color: #fff; border-radius: 999px;
+    width: 18px; height: 18px; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .image-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: flex; align-items: center; justify-content: center; z-index: 300; padding: 20px; }
+  .image-lightbox[hidden] { display: none; }
+  .image-lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; object-fit: contain; }
 
   /* ---------- Archives ---------- */
   .archive-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
-  .archive-toolbar input[type=text], .archive-toolbar select {
+  .archive-toolbar input[type=text], .archive-toolbar input[type=date], .archive-toolbar select {
     padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13.5px; font-family: inherit;
     background: var(--card-bg); color: var(--ink);
   }
@@ -408,6 +435,7 @@
         <div class="archive-toolbar">
           <input type="text" id="archiveSearch" placeholder="Rechercher un titre…" />
           <select id="archiveEmployeeFilter"><option value="">Tout le personnel</option></select>
+          <input type="date" id="archiveDateFilter" title="Filtrer par date d'archivage" />
           <select id="archiveSort">
             <option value="recent">Plus récentes d'abord</option>
             <option value="old">Plus anciennes d'abord</option>
@@ -429,8 +457,18 @@
         <input type="text" id="taskTitre" required />
         <label>Description</label>
         <textarea id="taskDescription"></textarea>
-        <label>Minutes allouées (temps confié pour la réalisation)</label>
-        <input type="number" id="taskMinutes" min="1" required value="15" />
+        <label>Temps alloué (heures et/ou minutes)</label>
+        <div style="display:flex; gap:10px;">
+          <input type="number" id="taskHours" min="0" placeholder="Heures" value="0" style="flex:1;" />
+          <input type="number" id="taskMinutes" min="0" placeholder="Minutes" value="15" style="flex:1;" />
+        </div>
+        <label>Captures d'écran (optionnel, 15 max)</label>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="file" id="taskImageInput" accept="image/png,image/jpeg,image/webp" multiple hidden />
+          <button type="button" class="ghost small" id="taskImageBtn">Ajouter des images</button>
+          <span id="taskImageCount" style="font-size:12px;color:var(--muted);"></span>
+        </div>
+        <div class="image-preview-list" id="taskImagePreview"></div>
         <label>Affilier à</label>
         <details class="assignee-dropdown" id="taskAssigneeDropdown">
           <summary><span class="txt" id="taskAssigneeSummary">Sélectionner le personnel</span></summary>
@@ -473,6 +511,23 @@
 
   <!-- input caché pour changer la photo depuis une carte employé existante -->
   <input type="file" id="avatarChangeInput" accept="image/png,image/jpeg,image/webp" hidden />
+
+  <!-- Modale : voir une tâche archivée -->
+  <div class="modal-backdrop" id="viewModalBackdrop" hidden>
+    <div class="modal">
+      <h2 id="viewTaskTitre"></h2>
+      <div id="viewTaskDesc" style="font-size:14px;color:var(--ink);margin-top:4px;"></div>
+      <div class="task-images" id="viewTaskImages"></div>
+      <div class="modal-footer">
+        <button type="button" class="ghost" id="closeViewModal">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visionneuse plein écran pour une image de tâche -->
+  <div class="image-lightbox" id="imageLightbox" hidden>
+    <img id="imageLightboxImg" src="" alt="" />
+  </div>
 
   <div id="toast" class="toast"></div>
 
@@ -618,6 +673,20 @@
     function sameInstant(isoA, isoB) {
       return Math.abs(new Date(isoA) - new Date(isoB)) < 5000;
     }
+    function formatMinutes(totalMin) {
+      if (!totalMin) return "0 min";
+      const h = Math.floor(totalMin / 60), m = totalMin % 60;
+      if (h > 0 && m > 0) return `${h}h ${m}min`;
+      if (h > 0) return `${h}h`;
+      return `${m} min`;
+    }
+    function openLightbox(url) {
+      document.getElementById("imageLightboxImg").src = url;
+      document.getElementById("imageLightbox").hidden = false;
+    }
+    document.getElementById("imageLightbox").addEventListener("click", () => {
+      document.getElementById("imageLightbox").hidden = true;
+    });
 
     // ---------- Thème jour / nuit (à plat, sans dégradé) ----------
     function applyTheme(t) {
@@ -669,7 +738,7 @@
                 <div class="field"><div class="l">Personnel</div><div class="v">${escapeHtml(names)}</div></div>
                 <div class="field retard"><div class="l">Retard</div><div class="v">${h > 0 ? h + "h " : ""}${m}min</div></div>
               </div>
-              <button class="primary small btn-ic" onclick="completeTask('${t.id}')">${icon("check")} Terminer</button>
+              <button class="primary small btn-ic" onclick="completeTask('${t.id}', true, this)">${icon("check")} Terminer</button>
             </div>`;
         }).join("");
       }
@@ -704,39 +773,57 @@
     }
 
     // ---------- Board (Tâches) ----------
+    function countdownLabel(totalSec) {
+      const h = Math.floor(totalSec / 3600), m = Math.floor((totalSec % 3600) / 60), s = totalSec % 60;
+      if (h > 0) return `${h}h ${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+      return `${m}:${s.toString().padStart(2, "0")}`;
+    }
     function timeChip(t) {
       if (t.statut === "archivee") return `<span class="time-chip neutral btn-ic">${icon("archive")} archivée</span>`;
       if (t.statut === "terminee") return `<span class="time-chip ok btn-ic">${icon("check")} terminée</span>`;
-      if (!t.date_fin_prevue) return `<span class="time-chip neutral">${t.minutes_allouees} min</span>`;
+      if (!t.date_fin_prevue) return `<span class="time-chip neutral">${formatMinutes(t.minutes_allouees)}</span>`;
       const ms = new Date(t.date_fin_prevue) - new Date();
       const cls = ms <= 0 ? "danger" : ms < 5 * 60 * 1000 ? "warn" : "ok";
       const totalSec = Math.max(0, Math.floor(ms / 1000));
-      const label = ms <= 0 ? "écoulé" : `${Math.floor(totalSec / 60)}:${(totalSec % 60).toString().padStart(2, "0")}`;
+      const label = ms <= 0 ? "écoulé" : countdownLabel(totalSec);
       return `<span class="time-chip ${cls}" data-fin="${t.date_fin_prevue}">${label}</span>`;
     }
+
+    function toggleAcc(el) { el.closest(".task-acc").classList.toggle("open"); }
 
     function cardHtml(t) {
       const av = (t.assigned_users || []).slice(0, 4).map(avatarHtml).join("");
       const actions = [];
-      if (t.statut === "a_faire") actions.push(`<button class="primary small btn-ic" onclick="startTask('${t.id}')">${icon("play")} Démarrer</button>`);
-      if (t.statut === "en_cours" || t.statut === "en_retard") actions.push(`<button class="primary small btn-ic" onclick="completeTask('${t.id}')">${icon("check")} Terminer</button>`);
+      if (t.statut === "a_faire") actions.push(`<button class="primary small btn-ic" onclick="startTask('${t.id}', true, this)">${icon("play")} Démarrer</button>`);
+      if (t.statut === "en_cours" || t.statut === "en_retard") actions.push(`<button class="primary small btn-ic" onclick="completeTask('${t.id}', true, this)">${icon("check")} Terminer</button>`);
       if (t.statut === "archivee") {
-        actions.push(`<button class="ghost small btn-ic" onclick="restoreTask('${t.id}')">${icon("rotate-ccw")} Restaurer</button>`);
-        actions.push(`<button class="ghost small" onclick="deleteTask('${t.id}')" title="Supprimer définitivement">${icon("trash-2")}</button>`);
-      } else actions.push(`<button class="ghost small" onclick="archiveTask('${t.id}')" title="Archiver">${icon("archive")}</button>`);
+        actions.push(`<button class="ghost small btn-ic" onclick="restoreTask('${t.id}', true, this)">${icon("rotate-ccw")} Restaurer</button>`);
+        actions.push(`<button class="ghost small" onclick="deleteTask('${t.id}', this)" title="Supprimer définitivement">${icon("trash-2")}</button>`);
+      } else actions.push(`<button class="ghost small" onclick="archiveTask('${t.id}', true, this)" title="Archiver">${icon("archive")}</button>`);
       const dates = sameInstant(t.created_at, t.updated_at)
         ? `Créée le ${formatDateShortFr(t.created_at)}`
         : `Créée le ${formatDateShortFr(t.created_at)} · modifiée le ${formatDateShortFr(t.updated_at)}`;
+      const images = (t.image_urls || []).length
+        ? `<div class="task-images">${t.image_urls.map(u => `<img src="${u}" onclick="event.stopPropagation(); openLightbox('${u}')">`).join("")}</div>`
+        : "";
       return `
-        <div class="card ${t.statut}" draggable="true" data-id="${t.id}" data-statut="${t.statut}">
-          <div class="title">${escapeHtml(t.titre)}</div>
-          ${t.description ? `<div class="desc">${escapeHtml(t.description)}</div>` : ""}
-          <div class="meta-dates">${dates}</div>
-          <div class="meta-row">
-            <div class="avatars">${av || '<span style="font-size:11px;color:var(--muted);">Non affilié</span>'}</div>
-            ${timeChip(t)}
+        <div class="card task-acc ${t.statut}" draggable="true" data-id="${t.id}" data-statut="${t.statut}">
+          <div class="task-acc-head" onclick="toggleAcc(this)">
+            <div class="task-acc-left">
+              <div class="avatars">${av || '<span style="font-size:11px;color:var(--muted);">NA</span>'}</div>
+              <div class="task-acc-title" title="${escapeHtml(t.titre)}">${escapeHtml(t.titre)}</div>
+            </div>
+            <div class="task-acc-right">
+              ${timeChip(t)}
+              <span class="task-acc-chevron">${icon("chevron-down")}</span>
+            </div>
           </div>
-          <div class="card-actions">${actions.join("")}</div>
+          <div class="task-acc-body">
+            ${t.description ? `<div class="desc">${escapeHtml(t.description)}</div>` : ""}
+            ${images}
+            <div class="meta-dates">${dates}</div>
+            <div class="card-actions">${actions.join("")}</div>
+          </div>
         </div>`;
     }
 
@@ -767,7 +854,7 @@
         const cls = ms <= 0 ? "danger" : ms < 5 * 60 * 1000 ? "warn" : "ok";
         el.className = "time-chip " + cls;
         const totalSec = Math.max(0, Math.floor(ms / 1000));
-        el.textContent = ms <= 0 ? "écoulé" : `${Math.floor(totalSec / 60)}:${(totalSec % 60).toString().padStart(2, "0")}`;
+        el.textContent = ms <= 0 ? "écoulé" : countdownLabel(totalSec);
       });
     }
     setInterval(tickTimers, 1000);
@@ -810,21 +897,50 @@
     }
 
     // ---------- Actions tâches ----------
-    async function startTask(id, reload = true) { try { await api(`/tasks/${id}/start`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
-    async function completeTask(id, reload = true) { try { await api(`/tasks/${id}/complete`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
-    async function archiveTask(id, reload = true) { try { await api(`/tasks/${id}/archive`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
-    async function restoreTask(id, reload = true) { try { await api(`/tasks/${id}/restore`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
-    async function deleteTask(id) {
+    // Idempotence côté UI : le bouton cliqué se désactive immédiatement (protège
+    // contre un double-clic) ; il n'est réactivé qu'en cas d'échec (le succès
+    // passe par loadAll(), qui régénère de toute façon des boutons neufs).
+    // Idempotence côté serveur (voir app/routers/tasks.py) : start/complete/archive
+    // sont eux-mêmes des no-op sûrs si rejoués sur une tâche déjà dans cet état.
+    async function startTask(id, reload = true, btn = null) {
+      if (btn) btn.disabled = true;
+      try { await api(`/tasks/${id}/start`, { method: "POST" }); if (reload) await loadAll(); }
+      catch (e) { showToast(e.message, "overdue"); if (btn) btn.disabled = false; }
+    }
+    async function completeTask(id, reload = true, btn = null) {
+      if (btn) btn.disabled = true;
+      try { await api(`/tasks/${id}/complete`, { method: "POST" }); if (reload) await loadAll(); }
+      catch (e) { showToast(e.message, "overdue"); if (btn) btn.disabled = false; }
+    }
+    async function archiveTask(id, reload = true, btn = null) {
+      if (btn) btn.disabled = true;
+      try { await api(`/tasks/${id}/archive`, { method: "POST" }); if (reload) await loadAll(); }
+      catch (e) { showToast(e.message, "overdue"); if (btn) btn.disabled = false; }
+    }
+    async function restoreTask(id, reload = true, btn = null) {
+      if (btn) btn.disabled = true;
+      try { await api(`/tasks/${id}/restore`, { method: "POST" }); if (reload) await loadAll(); }
+      catch (e) { showToast(e.message, "overdue"); if (btn) btn.disabled = false; }
+    }
+    async function deleteTask(id, btn = null) {
       const t = tasks.find(t => t.id === id);
       if (!confirm(`Supprimer définitivement la tâche « ${t ? t.titre : ""} » ? Cette action est irréversible.`)) return;
-      try { await api(`/tasks/${id}`, { method: "DELETE" }); await loadAll(); } catch (e) { showToast(e.message, "overdue"); }
+      if (btn) btn.disabled = true;
+      try { await api(`/tasks/${id}`, { method: "DELETE" }); await loadAll(); }
+      catch (e) { showToast(e.message, "overdue"); if (btn) btn.disabled = false; }
     }
-    async function archiveUser(id) { try { await api(`/users/${id}/archive`, { method: "POST" }); await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
-    async function deleteUser(id) {
+    async function archiveUser(id, btn = null) {
+      if (btn) btn.disabled = true;
+      try { await api(`/users/${id}/archive`, { method: "POST" }); await loadAll(); }
+      catch (e) { showToast(e.message, "overdue"); if (btn) btn.disabled = false; }
+    }
+    async function deleteUser(id, btn = null) {
       const u = users.find(u => u.id === id);
       const nom = u ? `${u.prenom} ${u.nom}` : "";
       if (!confirm(`Supprimer définitivement « ${nom} » ? Cette action est irréversible (l'historique des tâches déjà terminées est conservé, sans l'affiliation).`)) return;
-      try { await api(`/users/${id}`, { method: "DELETE" }); await loadAll(); } catch (e) { showToast(e.message, "overdue"); }
+      if (btn) btn.disabled = true;
+      try { await api(`/users/${id}`, { method: "DELETE" }); await loadAll(); }
+      catch (e) { showToast(e.message, "overdue"); if (btn) btn.disabled = false; }
     }
 
     // ---------- Modale tâche ----------
@@ -837,6 +953,30 @@
     }
     document.getElementById("taskUserChecks").addEventListener("change", updateAssigneeSummary);
 
+    let taskImageFiles = [];
+    function renderTaskImagePreview() {
+      const box = document.getElementById("taskImagePreview");
+      box.innerHTML = taskImageFiles.map((file, idx) => {
+        const url = URL.createObjectURL(file);
+        return `<div class="thumb"><img src="${url}"><span class="remove" onclick="removeTaskImage(${idx})">✕</span></div>`;
+      }).join("");
+      const count = document.getElementById("taskImageCount");
+      count.textContent = taskImageFiles.length ? `${taskImageFiles.length}/${TASK_IMAGE_MAX} sélectionnée(s)` : "";
+    }
+    function removeTaskImage(idx) { taskImageFiles.splice(idx, 1); renderTaskImagePreview(); }
+    const TASK_IMAGE_MAX = 15;
+    document.getElementById("taskImageBtn").addEventListener("click", () => document.getElementById("taskImageInput").click());
+    document.getElementById("taskImageInput").addEventListener("change", (e) => {
+      const newFiles = Array.from(e.target.files);
+      e.target.value = "";
+      if (taskImageFiles.length + newFiles.length > TASK_IMAGE_MAX) {
+        showToast(`Maximum ${TASK_IMAGE_MAX} images — il reste ${TASK_IMAGE_MAX - taskImageFiles.length} emplacement(s).`, "overdue");
+        return;
+      }
+      taskImageFiles.push(...newFiles);
+      renderTaskImagePreview();
+    });
+
     function openTaskModal() {
       const checks = document.getElementById("taskUserChecks");
       const actifs = users.filter(u => u.statut === "actif");
@@ -845,28 +985,46 @@
         : '<span class="empty">Aucun personnel actif — ajoutez d\'abord une personne.</span>';
       document.getElementById("taskAssigneeDropdown").open = false;
       updateAssigneeSummary();
+      taskImageFiles = [];
+      renderTaskImagePreview();
       document.getElementById("taskModalBackdrop").hidden = false;
       document.getElementById("taskTitre").focus();
     }
-    function closeTaskModal() { document.getElementById("taskModalBackdrop").hidden = true; document.getElementById("taskForm").reset(); updateAssigneeSummary(); }
+    function closeTaskModal() {
+      document.getElementById("taskModalBackdrop").hidden = true;
+      document.getElementById("taskForm").reset();
+      taskImageFiles = []; renderTaskImagePreview(); updateAssigneeSummary();
+    }
     document.getElementById("openTaskModalBtn").addEventListener("click", openTaskModal);
     document.getElementById("cancelTaskModal").addEventListener("click", closeTaskModal);
     document.getElementById("taskModalBackdrop").addEventListener("click", (e) => { if (e.target.id === "taskModalBackdrop") closeTaskModal(); });
 
     document.getElementById("taskForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
       const userIds = Array.from(document.querySelectorAll("#taskUserChecks input:checked")).map(i => i.value);
+      const hours = parseInt(document.getElementById("taskHours").value || "0", 10);
+      const minutes = parseInt(document.getElementById("taskMinutes").value || "0", 10);
+      const totalMin = hours * 60 + minutes;
+      if (totalMin <= 0) { showToast("Veuillez allouer au moins 1 minute", "overdue"); submitBtn.disabled = false; return; }
       try {
-        await api("/tasks", { method: "POST", body: JSON.stringify({
+        const created = await api("/tasks", { method: "POST", body: JSON.stringify({
           titre: document.getElementById("taskTitre").value.trim(),
           description: document.getElementById("taskDescription").value.trim() || null,
-          minutes_allouees: parseInt(document.getElementById("taskMinutes").value, 10),
+          minutes_allouees: totalMin,
           user_ids: userIds,
         })});
+        for (const file of taskImageFiles) {
+          const fd = new FormData(); fd.append("file", file);
+          await api(`/tasks/${created.id}/images`, { method: "POST", body: fd });
+        }
         closeTaskModal();
+        document.getElementById("taskHours").value = 0;
         document.getElementById("taskMinutes").value = 15;
         await loadAll();
       } catch (err) { showToast(err.message, "overdue"); }
+      finally { submitBtn.disabled = false; }
     });
 
     // ---------- Employés ----------
@@ -891,8 +1049,8 @@
               ${sameInstant(u.created_at, u.updated_at) ? "" : `<br>Mis à jour le ${formatDateShortFr(u.updated_at)}`}
             </div>
             ${u.statut === "actif"
-              ? `<button class="danger-text" onclick="archiveUser('${u.id}')">Archiver</button>`
-              : `<span style="font-size:11.5px;color:var(--muted);">Archivé</span> · <button class="danger-text" onclick="deleteUser('${u.id}')">Supprimer</button>`}
+              ? `<button class="danger-text" onclick="archiveUser('${u.id}', this)">Archiver</button>`
+              : `<span style="font-size:11.5px;color:var(--muted);">Archivé</span> · <button class="danger-text" onclick="deleteUser('${u.id}', this)">Supprimer</button>`}
           </div>`;
       }).join("");
       grid.innerHTML = cards + `
@@ -918,11 +1076,13 @@
 
       const search = (document.getElementById("archiveSearch").value || "").trim().toLowerCase();
       const empFilter = empSelect.value;
+      const dateFilter = document.getElementById("archiveDateFilter").value;
       const sort = document.getElementById("archiveSort").value;
 
       let filtered = archived.filter(t => {
         if (search && !t.titre.toLowerCase().includes(search)) return false;
         if (empFilter && !(t.assigned_users || []).some(u => u.id === empFilter)) return false;
+        if (dateFilter && new Date(t.updated_at).toISOString().split("T")[0] !== dateFilter) return false;
         return true;
       });
 
@@ -947,18 +1107,31 @@
           <div class="archive-row">
             <div class="archive-main">
               <div class="archive-title">${escapeHtml(t.titre)}</div>
-              <div class="archive-meta">${escapeHtml(names)} · ${t.minutes_allouees} min alloué${t.minutes_allouees > 1 ? "s" : ""}</div>
+              <div class="archive-meta">${escapeHtml(names)} · ${formatMinutes(t.minutes_allouees)} alloué${t.minutes_allouees > 1 ? "s" : ""}</div>
             </div>
             <div class="archive-date">Archivée le ${formatDateFr(t.updated_at)}</div>
-            <button class="ghost small btn-ic" onclick="restoreTask('${t.id}')">${icon("rotate-ccw")} Restaurer</button>
+            <button class="ghost small btn-ic" onclick="viewTask('${t.id}')">${icon("eye")} Voir</button>
+            <button class="ghost small btn-ic" onclick="restoreTask('${t.id}', true, this)">${icon("rotate-ccw")} Restaurer</button>
           </div>`;
       }).join("");
       lucide.createIcons();
     }
-    ["archiveSearch", "archiveEmployeeFilter", "archiveSort"].forEach(id => {
+    ["archiveSearch", "archiveEmployeeFilter", "archiveDateFilter", "archiveSort"].forEach(id => {
       document.getElementById(id).addEventListener("input", renderArchives);
       document.getElementById(id).addEventListener("change", renderArchives);
     });
+
+    function viewTask(id) {
+      const t = tasks.find(x => x.id === id);
+      if (!t) return;
+      document.getElementById("viewTaskTitre").textContent = t.titre;
+      document.getElementById("viewTaskDesc").textContent = t.description || "";
+      document.getElementById("viewTaskImages").innerHTML = (t.image_urls || [])
+        .map(u => `<img src="${u}" onclick="openLightbox('${u}')">`).join("");
+      document.getElementById("viewModalBackdrop").hidden = false;
+    }
+    document.getElementById("closeViewModal").addEventListener("click", () => document.getElementById("viewModalBackdrop").hidden = true);
+    document.getElementById("viewModalBackdrop").addEventListener("click", (e) => { if (e.target.id === "viewModalBackdrop") document.getElementById("viewModalBackdrop").hidden = true; });
 
     let avatarTargetUserId = null;
     function pickAvatar(userId) {
@@ -1006,6 +1179,8 @@
 
     document.getElementById("userForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
       try {
         const created = await api("/users", { method: "POST", body: JSON.stringify({
           prenom: document.getElementById("userPrenom").value.trim(),
@@ -1019,6 +1194,7 @@
         closeUserModal();
         await loadAll();
       } catch (err) { showToast(err.message, "overdue"); }
+      finally { submitBtn.disabled = false; }
     });
 
     // ---------- Chargement ----------

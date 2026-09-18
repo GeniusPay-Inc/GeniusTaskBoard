@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TaskBoard — Écran de suivi</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <script src="https://unpkg.com/lucide@1.43.0/dist/umd/lucide.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -107,6 +110,8 @@
   @keyframes rowFlash { 0% { background: var(--info); opacity: .35; } 100% { background: transparent; opacity: 1; } }
   .row .titre { font-weight: 700; font-size: clamp(13px, 1.5vw, 16px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .titre .desc { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); white-space: normal; margin-top: 2px; }
+  .row .titre .row-images { display: flex; gap: 4px; margin-top: 4px; }
+  .row .titre .row-images img { height: 32px; border-radius: 4px; border: 1px solid var(--line); object-fit: cover; }
   .people { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
   .avatar {
     width: 26px; height: 26px; border-radius: 999px; flex: none; color: #000; font-size: 10.5px; font-weight: 800;
@@ -381,7 +386,7 @@
           const n = (o.assigned_users || []).map(u => u.prenom).join(" et ") || "Non affilié";
           const ms = o.date_fin_prevue ? (new Date(o.date_fin_prevue) - new Date()) : null;
           const cls = urgency(ms);
-          const chip = ms === null ? `${o.minutes_allouees} min` : fmt(ms);
+          const chip = ms === null ? formatMinutes(o.minutes_allouees) : fmt(ms);
           return `<div class="recap-row"><span class="recap-name">${escapeHtml(n)}</span><span class="recap-task">${escapeHtml(o.titre)}</span><span class="recap-chip ${cls}">${chip}</span></div>`;
         }).join("");
     }
@@ -402,7 +407,7 @@
       const first = people[0];
       document.getElementById("spotlightTitle").textContent = t.titre;
       document.getElementById("spotlightPerson").textContent = names;
-      document.getElementById("spotlightDuration").textContent = `${t.minutes_allouees} min`;
+      document.getElementById("spotlightDuration").textContent = formatMinutes(t.minutes_allouees);
       document.getElementById("spotlightAvatar").outerHTML = first
         ? `<div class="spotlight-avatar" id="spotlightAvatar" style="${first.photo_url ? `background-image:url('${first.photo_url}')` : `background:${colorFor(first.id)}`}">${first.photo_url ? "" : initials(first)}</div>`
         : `<div class="spotlight-avatar" id="spotlightAvatar" style="background:${colorFor(t.id)}">✓</div>`;
@@ -460,7 +465,16 @@
       if (ms === null) return "";
       if (ms <= 0) return "00:00";
       const s = Math.floor(ms / 1000);
-      return `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+      if (h > 0) return `${h}h ${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+      return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+    }
+    function formatMinutes(totalMin) {
+      if (!totalMin) return "0 min";
+      const h = Math.floor(totalMin / 60), m = totalMin % 60;
+      if (h > 0 && m > 0) return `${h}h ${m}min`;
+      if (h > 0) return `${h}h`;
+      return `${m} min`;
     }
     function urgency(ms) { if (ms === null) return "neutral"; if (ms <= 0) return "danger"; if (ms < 5 * 60 * 1000) return "warn"; return "ok"; }
 
@@ -469,13 +483,15 @@
       const cls = urgency(ms);
       const av = (t.assigned_users || []).map(avatarHtml).join("");
       const names = (t.assigned_users || []).map(u => `${u.prenom} ${u.nom}`).join(", ") || "Non affilié";
+      const images = (t.image_urls || []).length
+        ? `<div class="row-images">${t.image_urls.slice(0, 4).map(u => `<img src="${u}">`).join("")}</div>` : "";
       return `
         <div class="row" data-id="${t.id}">
-          <div class="titre">${escapeHtml(t.titre)}${t.description ? `<span class="desc">${escapeHtml(t.description)}</span>` : ""}</div>
+          <div class="titre">${escapeHtml(t.titre)}${t.description ? `<span class="desc">${escapeHtml(t.description)}</span>` : ""}${images}</div>
           <div class="people">${av}<span class="names">${escapeHtml(names)}</span></div>
           <div>
             <div class="timer ${cls}" data-fin="${t.date_fin_prevue || ""}" data-minutes="${t.minutes_allouees}">
-              ${t.date_fin_prevue ? fmt(ms) : t.minutes_allouees + " min"}
+              ${t.date_fin_prevue ? fmt(ms) : formatMinutes(t.minutes_allouees)}
             </div>
             ${t.date_fin_prevue ? `<div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div>` : ""}
           </div>

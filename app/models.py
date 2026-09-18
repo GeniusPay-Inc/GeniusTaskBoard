@@ -61,6 +61,9 @@ class Task(Base):
     titre: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     minutes_allouees: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Liste JSON d'URLs (fichiers réels sous data/uploads/tasks/, jamais de
+    # base64 inline : ça alourdirait chaque chargement du tableau/dashboard).
+    image_urls: Mapped[str | None] = mapped_column(Text, nullable=True)
     statut: Mapped[TaskStatus] = mapped_column(Enum(TaskStatus), default=TaskStatus.a_faire)
     source: Mapped[TaskSource] = mapped_column(Enum(TaskSource), default=TaskSource.manuel)
 
