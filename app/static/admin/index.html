@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TaskBoard — Back-office</title>
+<script src="https://unpkg.com/lucide@1.43.0/dist/umd/lucide.js"></script>
+<link rel="stylesheet" href="/assets/geni.css">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<style>
+  :root {
+    --bg: #f0f2f7;
+    --column-bg: #e4e8f0;
+    --card-bg: #ffffff;
+    --ink: #172b4d;
+    --muted: #5e6c84;
+    --brand: #2563eb;
+    --brand-dark: #1d4ed8;
+    --ok: #16a34a;
+    --warn: #d97706;
+    --danger: #dc2626;
+    --border: #dfe3ea;
+    --ok-bg: #f0fdf5; --ok-border: #bbf0cf;
+    --warn-bg: #fff7ed; --warn-border: #fed7aa;
+    --danger-bg: #fef2f2; --danger-border: #fecaca;
+    --shadow: rgba(9,30,66,.15);
+  }
+  :root[data-theme="night"] {
+    --bg: #000000;
+    --column-bg: #0e0e0e;
+    --card-bg: #0a0a0a;
+    --ink: #f5f5f5;
+    --muted: #9a9a9a;
+    --brand: #3b82f6;
+    --brand-dark: #60a5fa;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --border: #262626;
+    --ok-bg: #06190d; --ok-border: #14532d;
+    --warn-bg: #1c1206; --warn-border: #78350f;
+    --danger-bg: #200808; --danger-border: #7f1d1d;
+    --shadow: rgba(0,0,0,.5);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--ink);
+  }
+  a { color: var(--brand); }
+  img { max-width: none; }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--ink);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none;
+  }
+  .icon-btn:hover { background: var(--column-bg); }
+
+  /* ---------- Header ---------- */
+  header {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+    padding: 12px clamp(12px, 2vw, 24px); background: var(--card-bg); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .gp-logo { display: flex; align-items: center; font-weight: 800; font-size: 16px; white-space: nowrap; letter-spacing: -.01em; }
+  .gp-logo .g { color: var(--ink); }
+  .gp-logo .p { background: #2563eb; color: #fff; padding: 1px 7px 2px; border-radius: 6px; margin-left: 3px; }
+  .brand .product {
+    font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+    padding-left: 12px; margin-left: 2px; border-left: 1px solid var(--border);
+  }
+  .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .header-actions .links a { font-size: 13px; text-decoration: none; margin-right: 10px; display: inline-flex; align-items: center; gap: 4px; }
+  .header-actions .links a svg { width: 14px; height: 14px; }
+
+  i[data-lucide], svg.lucide { display: inline-flex; }
+  svg.lucide { width: 16px; height: 16px; stroke-width: 2.2; vertical-align: -3px; }
+  button svg.lucide { vertical-align: -3px; }
+  .btn-ic { display: inline-flex; align-items: center; gap: 6px; }
+  .key-pill {
+    display: flex; align-items: center; gap: 6px; background: var(--column-bg); border: 1px solid var(--border);
+    border-radius: 999px; padding: 5px 10px 5px 12px; font-size: 12px; color: var(--muted); cursor: pointer;
+  }
+  .key-pill.set { color: var(--ok); border-color: var(--ok-border); background: var(--ok-bg); }
+  .key-pill.bad { color: var(--danger); border-color: var(--danger-border); background: var(--danger-bg); }
+  .key-pill .dot { width: 7px; height: 7px; border-radius: 999px; background: currentColor; }
+
+  button { cursor: pointer; border: none; border-radius: 8px; font-family: inherit; }
+  button.primary { background: var(--brand); color: #fff; padding: 8px 14px; font-size: 13px; font-weight: 600; }
+  button.primary:hover { background: var(--brand-dark); }
+  button.ghost { background: var(--column-bg); color: var(--ink); padding: 8px 14px; font-size: 13px; font-weight: 600; }
+  button.subtle { background: transparent; color: var(--muted); padding: 4px 8px; font-size: 12px; }
+  button.danger-text { background: transparent; color: var(--danger); padding: 4px 8px; font-size: 12px; font-weight: 600; }
+  button.small { padding: 5px 9px; font-size: 12px; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ---------- Onboarding banner ---------- */
+  #onboarding {
+    background: var(--warn-bg); border-bottom: 1px solid var(--warn-border); padding: 12px clamp(12px, 2vw, 24px);
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  }
+  #onboarding[hidden] { display: none; }
+  #onboarding.error { background: var(--danger-bg); border-bottom-color: var(--danger-border); }
+  #onboarding .icon svg { width: 22px; height: 22px; color: var(--warn); }
+  #onboarding .text { flex: 1; min-width: 240px; font-size: 13px; line-height: 1.5; }
+  #onboarding .text b { display: block; font-size: 14px; margin-bottom: 2px; }
+  #onboarding .text code { background: rgba(128,128,128,.25); padding: 1px 5px; border-radius: 4px; }
+  #onboarding form { display: flex; gap: 6px; }
+  #onboarding input {
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; width: 220px;
+  }
+
+  /* ---------- App shell : sidebar + contenu ---------- */
+  .shell { display: flex; align-items: flex-start; }
+  nav.sidebar {
+    width: 208px; flex: none; padding: 16px 10px; position: sticky; top: 57px;
+    height: calc(100vh - 57px); display: flex; flex-direction: column; gap: 2px;
+    background: var(--card-bg); border-right: 1px solid var(--border);
+  }
+  nav.sidebar button.nav-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent;
+    padding: 10px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 600; color: var(--muted);
+  }
+  nav.sidebar button.nav-item .ic { display: inline-flex; width: 20px; justify-content: center; }
+  nav.sidebar button.nav-item .ic svg { width: 17px; height: 17px; }
+  nav.sidebar button.nav-item:hover { background: var(--column-bg); color: var(--ink); }
+  nav.sidebar button.nav-item.active { background: var(--column-bg); color: var(--brand-dark); border: 1px solid var(--border); }
+  main.content { flex: 1; min-width: 0; padding: 18px clamp(12px, 2vw, 24px) 40px; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+  .view-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .view-head h2 { margin: 0; font-size: 19px; }
+  .view-head p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+
+  /* ---------- Dashboard KPIs ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 26px; }
+  .kpi { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .kpi .n { font-size: 30px; font-weight: 800; line-height: 1; }
+  .kpi .l { font-size: 12px; color: var(--muted); margin-top: 6px; font-weight: 600; }
+  .kpi.danger .n { color: var(--danger); } .kpi.ok .n { color: var(--ok); } .kpi.info .n { color: var(--brand); }
+
+  .section-title { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 12px; }
+
+  .alert-card {
+    background: var(--card-bg); border: 1px solid var(--danger-border); border-left: 5px solid var(--danger); border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;
+  }
+  .alert-card .left .title { font-size: 17px; font-weight: 800; }
+  .alert-card .left .title svg.lucide { color: var(--danger); width: 18px; height: 18px; }
+  .alert-card .left .desc { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .alert-card .mid { display: flex; gap: 28px; flex-wrap: wrap; }
+  .alert-card .field .l { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+  .alert-card .field .v { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  .alert-card .field.retard .v { color: var(--danger); font-size: 22px; font-variant-numeric: tabular-nums; }
+  .empty-ok {
+    background: var(--ok-bg); border: 1px solid var(--ok-border); color: var(--ok); border-radius: 12px; padding: 10px 18px 10px 10px;
+    font-weight: 600; font-size: 13.5px; margin-bottom: 26px; display: flex; align-items: center; gap: 4px;
+  }
+
+  .workload-row { display: flex; align-items: center; gap: 12px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+  .workload-row .name { font-weight: 700; font-size: 13.5px; flex: 1; }
+  .workload-row .bar-track { flex: 2; height: 8px; background: var(--column-bg); border-radius: 999px; overflow: hidden; }
+  .workload-row .bar-fill { height: 100%; background: var(--brand); border-radius: 999px; }
+  .workload-row .count { font-size: 12px; color: var(--muted); font-weight: 700; width: 70px; text-align: right; }
+
+  /* ---------- Board (Tâches) ---------- */
+  .board { display: flex; gap: 14px; overflow-x: auto; align-items: flex-start; padding-bottom: 10px; }
+  .column {
+    background: var(--column-bg); border-radius: 12px; padding: 10px; width: 300px; flex: 0 0 300px;
+    display: flex; flex-direction: column; max-height: calc(100vh - 230px);
+  }
+  .column.drag-over { outline: 2px dashed var(--brand); outline-offset: -2px; }
+  .column-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 10px; }
+  .column-head .name { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; display: flex; align-items: center; gap: 7px; }
+  .column-head .flag { width: 8px; height: 8px; border-radius: 999px; }
+  .column-head .count { background: rgba(0,0,0,.08); border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
+  .card-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-bottom: 4px; min-height: 40px; }
+  .card-list .empty { font-size: 12px; color: var(--muted); padding: 10px 6px; }
+
+  .card {
+    background: var(--card-bg); border-radius: 10px; padding: 10px 12px; box-shadow: 0 1px 2px var(--shadow);
+    cursor: grab; border-left: 4px solid var(--border);
+  }
+  .card:active { cursor: grabbing; }
+  .card.dragging { opacity: .4; }
+  .card.a_faire { border-left-color: #94a3b8; }
+  .card.en_cours { border-left-color: var(--brand); }
+  .card.en_retard { border-left-color: var(--danger); animation: pulseCard 1.6s ease-in-out infinite; }
+  .card.terminee { border-left-color: var(--ok); }
+  .card.archivee { border-left-color: var(--muted); opacity: .7; }
+  @keyframes pulseCard { 0%,100% { box-shadow: 0 1px 2px var(--shadow); } 50% { box-shadow: 0 0 0 3px rgba(220,38,38,.35); } }
+
+  .card .title { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; line-height: 1.35; }
+  .card .desc { font-size: 12px; color: var(--muted); margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .meta-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .avatars { display: flex; }
+  .avatar {
+    width: 24px; height: 24px; border-radius: 999px; color: #fff; font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; border: 2px solid var(--card-bg); margin-left: -8px;
+    background-size: cover; background-position: center; flex: none;
+  }
+  .avatar:first-child { margin-left: 0; }
+  .time-chip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 3px; }
+  .time-chip svg.lucide { width: 11px; height: 11px; }
+  .time-chip.neutral { background: var(--column-bg); color: var(--muted); }
+  .time-chip.ok { background: var(--ok-bg); color: var(--ok); }
+  .time-chip.warn { background: var(--warn-bg); color: var(--warn); }
+  .time-chip.danger { background: var(--danger-bg); color: var(--danger); }
+  .card .card-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .card .card-actions button { flex: 1; }
+
+  .add-card-btn {
+    background: transparent; color: var(--muted); text-align: left; padding: 8px 6px; font-size: 12.5px;
+    font-weight: 600; border-radius: 8px;
+  }
+  .add-card-btn:hover { background: var(--column-bg); color: var(--ink); }
+
+  /* ---------- Employés ---------- */
+  .employee-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+  .employee-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 18px 16px; text-align: center; position: relative; }
+  .employee-card.archive { opacity: .55; }
+  .employee-card .badge-status {
+    position: absolute; top: 12px; right: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 999px; background: var(--column-bg); color: var(--muted);
+  }
+  .employee-card .badge-status.actif { background: var(--ok-bg); color: var(--ok); }
+  .photo-wrap { position: relative; width: 76px; height: 76px; margin: 0 auto 12px; }
+  .avatar-lg {
+    width: 76px; height: 76px; border-radius: 999px; color: #fff; font-size: 24px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; background-size: cover; background-position: center;
+  }
+  .photo-wrap .cam-btn {
+    position: absolute; bottom: -2px; right: -2px; width: 28px; height: 28px; border-radius: 999px; background: var(--card-bg);
+    border: 2px solid var(--bg); display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 3px var(--shadow); cursor: pointer; color: var(--muted);
+  }
+  .photo-wrap .cam-btn svg.lucide { width: 13px; height: 13px; }
+  .employee-card .name { font-weight: 700; font-size: 14.5px; margin-top: 2px; }
+  .employee-card .role { font-size: 12px; color: var(--muted); margin-top: 2px; margin-bottom: 10px; }
+  .employee-card .load { font-size: 11.5px; color: var(--muted); margin-bottom: 10px; }
+  .employee-card .load b { color: var(--ink); }
+  .add-employee-card {
+    border: 2px dashed var(--border); border-radius: 14px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 6px; color: var(--muted); font-weight: 700; font-size: 13px; min-height: 190px;
+    background: transparent;
+  }
+  .add-employee-card:hover { background: var(--column-bg); color: var(--ink); }
+  .add-employee-card .plus { font-size: 28px; }
+
+  /* ---------- Modal ---------- */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(9,30,66,.5); display: flex; align-items: center; justify-content: center;
+    padding: 16px; z-index: 100;
+  }
+  .modal-backdrop[hidden] { display: none; }
+  .modal { background: var(--card-bg); border-radius: 14px; padding: 20px; width: 100%; max-width: 440px; max-height: 90vh; overflow-y: auto; }
+  .modal h2 { margin: 0 0 14px; font-size: 16px; }
+  .modal label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin: 12px 0 5px; }
+  .modal input[type=text], .modal input[type=number], .modal textarea, .modal select {
+    width: 100%; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit;
+  }
+  .modal textarea { resize: vertical; min-height: 60px; }
+  .modal .checks { display: flex; flex-wrap: wrap; gap: 8px; max-height: 140px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+  .modal .checks label { display: flex; align-items: center; gap: 6px; font-weight: 400; font-size: 13px; color: var(--ink); margin: 0; }
+
+  /* ---------- Liste déroulante d'affiliation (personnel) ---------- */
+  .assignee-dropdown { border: 1px solid var(--border); border-radius: 8px; }
+  .assignee-dropdown summary {
+    cursor: pointer; padding: 9px 10px; font-size: 14px; color: var(--ink); list-style: none;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; border-radius: 8px;
+  }
+  .assignee-dropdown summary span.txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .assignee-dropdown summary::-webkit-details-marker { display: none; }
+  .assignee-dropdown summary::after { content: "▾"; color: var(--muted); font-size: 11px; flex: none; }
+  .assignee-dropdown[open] summary::after { content: "▴"; }
+  .assignee-dropdown[open] summary { border-bottom: 1px solid var(--border); border-radius: 8px 8px 0 0; }
+  .assignee-dropdown .checks { border: none; border-radius: 0 0 8px 8px; margin: 0; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  .photo-picker { display: flex; align-items: center; gap: 12px; }
+  .photo-picker .preview {
+    width: 56px; height: 56px; border-radius: 999px; background: var(--column-bg) center/cover no-repeat;
+    display: flex; align-items: center; justify-content: center; color: var(--muted); flex: none;
+  }
+  .photo-picker .preview svg.lucide { width: 24px; height: 24px; }
+
+  /* ---------- Archives ---------- */
+  .archive-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .archive-toolbar input[type=text], .archive-toolbar input[type=date], .archive-toolbar select {
+    padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13.5px; font-family: inherit;
+    background: var(--card-bg); color: var(--ink);
+  }
+  .archive-toolbar input[type=text] { flex: 1; min-width: 180px; }
+  .archive-row {
+    display: flex; align-items: center; gap: 16px; background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; flex-wrap: wrap;
+  }
+  .archive-row .archive-main { flex: 1; min-width: 180px; }
+  .archive-row .archive-title { font-weight: 700; font-size: 14px; }
+  .archive-row .archive-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .archive-row .archive-date { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .toast {
+    position: fixed; bottom: 20px; right: 20px; background: var(--ok); color: #fff;
+    padding: 12px 18px; border-radius: 10px; font-weight: 600; font-size: 13px; opacity: 0; max-width: 320px;
+    transform: translateY(10px); transition: all .3s ease; z-index: 200; box-shadow: 0 6px 20px var(--shadow);
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.completed { background: var(--brand); }
+  .toast.overdue { background: var(--danger); }
+
+  /* ---------- Accordion Task ---------- */
+  .card.task-acc { padding: 0; border-radius: 999px; border: 1px solid var(--border); border-left: 1px solid var(--border); overflow: hidden; transition: all 0.2s; }
+  .task-acc-head { padding: 6px 10px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+  .task-acc-head:hover { background: var(--column-bg); }
+  
+  /* terminee open style */
+  .card.task-acc.terminee.open { border-radius: 14px; border-color: var(--ok); border-left-color: var(--ok); }
+  .card.task-acc.terminee.open .task-acc-head { background: var(--ok-bg); border-bottom: 1px solid var(--ok-border); }
+  
+  /* a_faire open style */
+  .card.task-acc.a_faire.open { border-radius: 14px; border-color: #cbd5e1; border-left-color: #94a3b8; }
+  .card.task-acc.a_faire.open .task-acc-head { background: var(--column-bg); border-bottom: 1px solid var(--border); }
+
+  /* en_cours open style */
+  .card.task-acc.en_cours.open { border-radius: 14px; border-color: #93c5fd; border-left-color: var(--brand); }
+  .card.task-acc.en_cours.open .task-acc-head { background: #eff6ff; border-bottom: 1px solid #bfdbfe; }
+
+  /* en_retard open style */
+  .card.task-acc.en_retard.open { border-radius: 14px; border-color: var(--danger-border); border-left-color: var(--danger); }
+  .card.task-acc.en_retard.open .task-acc-head { background: var(--danger-bg); border-bottom: 1px solid var(--danger-border); }
+
+  /* archivee open style */
+  .card.task-acc.archivee.open { border-radius: 14px; border-color: #94a3b8; border-left-color: var(--muted); }
+  .card.task-acc.archivee.open .task-acc-head { background: var(--column-bg); border-bottom: 1px solid var(--border); }
+
+  .task-acc-left { display: flex; align-items: center; gap: 8px; overflow: hidden; }
+  .task-acc-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+  .task-acc-right { display: flex; align-items: center; gap: 4px; flex: none; }
+  .task-acc-chevron { transition: transform 0.2s; color: var(--muted); display: inline-flex; align-items: center; }
+  .card.task-acc.open .task-acc-chevron { transform: rotate(180deg); }
+  .task-acc-body { display: none; padding: 10px 12px; }
+  .card.task-acc.open .task-acc-body { display: block; }
+
+  @media (max-width: 860px) {
+    nav.sidebar { position: static; height: auto; width: 100%; flex-direction: row; overflow-x: auto; padding: 8px clamp(12px,2vw,24px); }
+    .shell { flex-direction: column; }
+    nav.sidebar button.nav-item { flex: none; width: auto; white-space: nowrap; }
+  }
+  @media (max-width: 640px) {
+    .column { width: 82vw; flex-basis: 82vw; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="gp-logo"><span class="g">Genius</span><span class="p">Pay</span></div>
+      <div class="product">TaskBoard · Back-office</div>
+    </div>
+    <div class="header-actions">
+      <div class="links">
+        <a href="/dashboard" target="_blank">Écran de suivi <i data-lucide="external-link"></i></a>
+        <a href="/docs" target="_blank">API <i data-lucide="external-link"></i></a>
+      </div>
+      <button class="key-pill" id="keyPill" title="Configurer la clé API"><span class="dot"></span><span id="keyPillLabel">Clé API non configurée</span></button>
+      <button class="icon-btn" id="themeToggle" title="Basculer jour/nuit"></button>
+    </div>
+  </header>
+
+  <div id="onboarding" hidden>
+    <span class="icon"><i data-lucide="key-round"></i></span>
+    <div class="text" id="onboardingText"></div>
+    <form id="onboardingForm">
+      <input id="onboardingInput" type="password" placeholder="Coller la clé API…" autocomplete="off" />
+      <button class="primary" type="submit">Enregistrer</button>
+    </form>
+  </div>
+
+  <div class="shell">
+    <nav class="sidebar">
+      <button class="nav-item" data-view="dashboard"><span class="ic"><i data-lucide="home"></i></span> Dashboard</button>
+      <button class="nav-item" data-view="tasks"><span class="ic"><i data-lucide="check-square"></i></span> Tâches</button>
+      <button class="nav-item" data-view="employees"><span class="ic"><i data-lucide="users"></i></span> Employés</button>
+      <button class="nav-item" data-view="archives"><span class="ic"><i data-lucide="folder"></i></span> Archives</button>
+    </nav>
+
+    <main class="content">
+
+      <!-- ================= Dashboard ================= -->
+      <section class="view" id="view-dashboard">
+        <div class="view-head">
+          <div><h2>Dashboard récapitulatif</h2><p>Vue d'ensemble de l'activité en cours</p></div>
+        </div>
+        <div class="kpis" id="kpis"></div>
+        <div class="section-title">Alertes — tâches en retard</div>
+        <div id="alerts"></div>
+        <div class="section-title" style="margin-top:8px;">Charge de travail (personnel actif)</div>
+        <div id="workload"></div>
+      </section>
+
+      <!-- ================= Tâches ================= -->
+      <section class="view" id="view-tasks">
+        <div class="view-head">
+          <div><h2>Tâches</h2><p>Glissez une carte pour démarrer ou terminer une tâche</p></div>
+          <button class="primary" id="openTaskModalBtn">+ Nouvelle tâche</button>
+        </div>
+        <div class="board" id="board"></div>
+      </section>
+
+      <!-- ================= Employés ================= -->
+      <section class="view" id="view-employees">
+        <div class="view-head">
+          <div><h2>Employés</h2><p>Personnel, rôles et photos de profil</p></div>
+        </div>
+        <div class="employee-grid" id="employeeGrid"></div>
+      </section>
+
+      <!-- ================= Archives ================= -->
+      <section class="view" id="view-archives">
+        <div class="view-head">
+          <div><h2>Archives</h2><p>Tâches archivées — recherche, filtre et restauration</p></div>
+        </div>
+        <div class="archive-toolbar">
+          <input type="text" id="archiveSearch" placeholder="Rechercher un titre..." />
+          <select id="archiveEmployeeFilter"><option value="">Tout le personnel</option></select>
+          <input type="date" id="archiveDateFilter" title="Filtrer par date" />
+          <select id="archiveSort">
+            <option value="recent">Plus récentes d'abord</option>
+            <option value="old">Plus anciennes d'abord</option>
+            <option value="titre">Titre (A-Z)</option>
+          </select>
+        </div>
+        <div id="archiveList"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Modale : nouvelle tâche -->
+  <div class="modal-backdrop" id="taskModalBackdrop" hidden>
+    <div class="modal">
+      <h2>Nouvelle tâche</h2>
+      <form id="taskForm">
+        <label>Titre</label>
+        <input type="text" id="taskTitre" required />
+        <label>Description</label>
+        <textarea id="taskDescription"></textarea>
+        <label>Temps alloué (Heures et/ou Minutes)</label>
+        <div style="display: flex; gap: 10px;">
+          <input type="number" id="taskHours" min="0" placeholder="Heures" value="0" style="flex: 1;" />
+          <input type="number" id="taskMinutes" min="0" placeholder="Minutes" value="15" style="flex: 1;" />
+        </div>
+        <label>Captures d'écran (optionnel)</label>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="file" id="taskImage" accept="image/*" multiple style="display:none;" />
+          <button type="button" class="ghost" id="taskImageBtn" onclick="document.getElementById('taskImage').click()" style="padding: 6px 12px; font-size: 13px;">Ajouter des images</button>
+          <span id="taskImageCountText" style="font-size:12px; color:var(--muted);"></span>
+        </div>
+        <div id="taskImagePreviewContainer" style="display:flex; gap:8px; margin-top:8px; overflow-x:auto;"></div>
+        <label>Affilier à</label>
+        <details class="assignee-dropdown" id="taskAssigneeDropdown">
+          <summary><span class="txt" id="taskAssigneeSummary">Sélectionner le personnel</span></summary>
+          <div class="checks" id="taskUserChecks"><span class="empty">Aucun personnel — ajoutez d'abord une personne.</span></div>
+        </details>
+        <div class="modal-footer">
+          <button type="button" class="ghost" id="cancelTaskModal">Annuler</button>
+          <button class="primary" type="submit">Créer la tâche</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modale : nouvel employé -->
+  <div class="modal-backdrop" id="userModalBackdrop" hidden>
+    <div class="modal">
+      <h2>Nouvel employé</h2>
+      <form id="userForm">
+        <label>Photo de profil (optionnel)</label>
+        <div class="photo-picker">
+          <div class="preview" id="userPhotoPreview"><i data-lucide="user"></i></div>
+          <input type="file" id="userPhotoInput" accept="image/png,image/jpeg,image/webp" />
+        </div>
+        <label>Prénom</label>
+        <input type="text" id="userPrenom" required />
+        <label>Nom</label>
+        <input type="text" id="userNom" required />
+        <label>Rôle</label>
+        <select id="userRole">
+          <option value="employe">Employé</option>
+          <option value="admin">Admin</option>
+        </select>
+        <div class="modal-footer">
+          <button type="button" class="ghost" id="cancelUserModal">Annuler</button>
+          <button class="primary" type="submit">Ajouter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modale : voir tâche archivée -->
+  <div class="modal-backdrop" id="viewModalBackdrop" hidden>
+    <div class="modal">
+      <h2 id="viewTaskTitre"></h2>
+      <div id="viewTaskDesc" style="font-size:14px;color:var(--ink);margin-top:10px;"></div>
+      <div class="modal-footer">
+        <button type="button" class="ghost" id="closeViewModal">Fermer</button>
+      </div>
+    </div>
+  </div>
+  <!-- Modale : voir image en grand -->
+  <div class="modal-backdrop" id="imagePreviewModalBackdrop" hidden style="z-index: 200;">
+    <div style="position:relative; max-width:90vw; max-height:90vh;">
+      <img id="imagePreviewFull" src="" style="max-width:100%; max-height:90vh; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.5); object-fit:contain; background:#fff;" />
+      <span id="closeImagePreviewModal" style="position:absolute; top:-12px; right:-12px; background:#dc2626; color:#fff; border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:14px; box-shadow:0 2px 4px rgba(0,0,0,0.3);">✕</span>
+    </div>
+  </div>
+  <!-- input caché pour changer la photo depuis une carte employé existante -->
+  <input type="file" id="avatarChangeInput" accept="image/png,image/jpeg,image/webp" hidden />
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/assets/geni.js"></script>
+  <script>
+    const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
+    const COLUMNS = [
+      { key: "a_faire", label: "À faire", flag: "#94a3b8" },
+      { key: "en_cours", label: "En cours", flag: "#2563eb" },
+      { key: "en_retard", label: "En retard", flag: "#dc2626" },
+      { key: "terminee", label: "Terminées", flag: "#16a34a" },
+      { key: "archivee", label: "Archivées", flag: "#64748b" },
+    ];
+    // Déplacements pris en charge par glisser-déposer : "origine->destination" -> action à appeler.
+    const DRAG_TRANSITIONS = {
+      "a_faire->en_cours": "start",
+      "a_faire->archivee": "archive",
+      "en_cours->terminee": "complete",
+      "en_cours->archivee": "archive",
+      "en_retard->terminee": "complete",
+      "en_retard->archivee": "archive",
+      "terminee->archivee": "archive",
+      "archivee->a_faire": "restore",
+    };
+    let users = [];
+    let tasks = [];
+    let lastAuthError = false;
+    let currentView = "dashboard";
+
+    // ---------- Navigation ----------
+    function switchView(view) {
+      currentView = view;
+      document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + view));
+      document.querySelectorAll(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+    }
+    document.querySelectorAll(".nav-item").forEach(b => b.addEventListener("click", () => switchView(b.dataset.view)));
+    switchView("dashboard");
+
+    // ---------- Clé API ----------
+    function apiKey() { return localStorage.getItem("taskboard_api_key") || ""; }
+    function setApiKey(v) { localStorage.setItem("taskboard_api_key", v.trim()); refreshKeyPill(); }
+    function refreshKeyPill() {
+      const pill = document.getElementById("keyPill");
+      const label = document.getElementById("keyPillLabel");
+      if (lastAuthError) { pill.className = "key-pill bad"; label.textContent = "Clé API invalide"; }
+      else if (apiKey()) { pill.className = "key-pill set"; label.textContent = "Clé API configurée"; }
+      else { pill.className = "key-pill"; label.textContent = "Clé API non configurée"; }
+      renderOnboarding();
+    }
+    function renderOnboarding() {
+      const box = document.getElementById("onboarding");
+      const text = document.getElementById("onboardingText");
+      if (lastAuthError) {
+        box.hidden = false; box.className = "error";
+        text.innerHTML = "<b>Clé API refusée par le serveur.</b>Vérifiez qu'elle correspond exactement à la valeur <code>API_KEY</code> définie dans le fichier <code>.env</code> du serveur, puis resaisissez-la ci-contre.";
+      } else if (!apiKey()) {
+        box.hidden = false; box.className = "";
+        text.innerHTML = "<b>Configurez la clé API avant de créer du personnel ou des tâches.</b>Elle correspond à la valeur <code>API_KEY</code> du fichier <code>.env</code> du serveur (demandez-la à la personne qui l'a déployé). La clé est ensuite mémorisée dans ce navigateur.";
+      } else {
+        box.hidden = true;
+      }
+    }
+    document.getElementById("keyPill").addEventListener("click", () => {
+      document.getElementById("onboarding").hidden = false;
+      document.getElementById("onboardingInput").focus();
+    });
+    document.getElementById("onboardingForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const v = document.getElementById("onboardingInput").value;
+      if (!v.trim()) return;
+      setApiKey(v);
+      lastAuthError = false;
+      document.getElementById("onboardingInput").value = "";
+      refreshKeyPill();
+      loadAll();
+    });
+
+    // ---------- API ----------
+    async function api(path, options = {}) {
+      const headers = Object.assign({}, options.headers || {});
+      const isForm = options.body instanceof FormData;
+      if (!isForm) headers["Content-Type"] = "application/json";
+      if (options.method && options.method !== "GET") headers["X-API-Key"] = apiKey();
+      const res = await fetch("/api/v1" + path, Object.assign({}, options, { headers }));
+      if (res.status === 401) {
+        lastAuthError = true; refreshKeyPill();
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || "Clé API manquante ou invalide");
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `Erreur ${res.status}`);
+      }
+      if (options.method && options.method !== "GET") { lastAuthError = false; refreshKeyPill(); }
+      return res.status === 204 ? null : res.json();
+    }
+
+    // ---------- Sons / toast ----------
+    function beep(freq = 880, duration = 180) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.frequency.value = freq; osc.type = "sine";
+        osc.connect(gain); gain.connect(ctx.destination);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        osc.start(); osc.stop(ctx.currentTime + duration / 1000);
+      } catch (e) {}
+    }
+    function showToast(text, cls) {
+      const toast = document.getElementById("toast");
+      toast.textContent = text;
+      toast.className = "toast show " + (cls || "");
+      setTimeout(() => toast.classList.remove("show"), 3500);
+    }
+
+    // ---------- Avatars (photo si dispo, sinon initiales colorées) ----------
+    const AVATAR_COLORS = ["#2563eb", "#7c3aed", "#db2777", "#d97706", "#16a34a", "#0891b2", "#dc2626"];
+    function colorFor(id) {
+      let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+      return AVATAR_COLORS[h % AVATAR_COLORS.length];
+    }
+    function initials(u) { return ((u.prenom[0] || "") + (u.nom[0] || "")).toUpperCase(); }
+    function icon(name, cls) { return `<i data-lucide="${name}"${cls ? ` class="${cls}"` : ""}></i>`; }
+    function avatarStyle(u) { return u.photo_url ? `background-image:url('${u.photo_url}')` : `background:${colorFor(u.id)}`; }
+    function avatarHtml(u) {
+      return `<div class="avatar" style="${avatarStyle(u)}" title="${u.prenom} ${u.nom}">${u.photo_url ? "" : initials(u)}</div>`;
+    }
+    function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+    function renderDesc(desc) {
+      if (!desc) return "";
+      let txt = desc;
+      let imgsHTML = "";
+      const regex = /\[IMG\](.*?)\[\/IMG\]/g;
+      let m;
+      while ((m = regex.exec(desc)) !== null) {
+        imgsHTML += `<img src="${m[1]}" style="height:150px; border-radius:4px; border:1px solid #ddd; object-fit:contain; background:#fff;">`;
+        txt = txt.replace(m[0], "");
+      }
+      txt = txt.trim();
+      let imgsContainer = imgsHTML ? `<div style="margin-top:8px; display:flex; gap:8px; overflow-x:auto;">${imgsHTML}</div>` : "";
+      return txt || imgsContainer ? `<div class="desc">${txt ? escapeHtml(txt) : ""}${imgsContainer}</div>` : "";
+    }
+    function formatDateFr(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) +
+        " à " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    }
+    
+    function formatMinutes(totalMin) {
+      if (!totalMin) return "0 min";
+      const h = Math.floor(totalMin / 60);
+      const m = totalMin % 60;
+      if (h > 0 && m > 0) return `${h}h ${m}min`;
+      if (h > 0) return `${h}h`;
+      return `${m} min`;
+    }
+
+    // ---------- Thème jour / nuit (à plat, sans dégradé) ----------
+    function applyTheme(t) {
+      document.documentElement.setAttribute("data-theme", t);
+      localStorage.setItem("taskboard_theme_admin", t);
+      const btn = document.getElementById("themeToggle");
+      btn.innerHTML = icon(t === "night" ? "sun" : "moon");
+      lucide.createIcons();
+    }
+    document.getElementById("themeToggle").addEventListener("click", () => {
+      applyTheme((localStorage.getItem("taskboard_theme_admin") || "day") === "day" ? "night" : "day");
+    });
+    applyTheme(localStorage.getItem("taskboard_theme_admin") || "day");
+
+    // ---------- Dashboard ----------
+    function statSub(count, zeroText) { return count === 0 ? `<div class="l" style="margin-top:3px;font-weight:500;">${zeroText}</div>` : ""; }
+
+    function renderDashboard() {
+      const counts = { a_faire: 0, en_cours: 0, en_retard: 0, terminee: 0, archivee: 0 };
+      tasks.forEach(t => { if (counts[t.statut] !== undefined) counts[t.statut]++; });
+      counts.terminee = counts.archivee; // Since completed tasks skip directly to archived
+      const actifs = users.filter(u => u.statut === "actif");
+      const busyIds = new Set(tasks.filter(t => t.statut === "en_cours").flatMap(t => (t.assigned_users || []).map(u => u.id)));
+      const disponibles = actifs.filter(u => !busyIds.has(u.id)).length;
+
+      document.getElementById("kpis").innerHTML = `
+        <div class="kpi info"><div class="n">${counts.en_cours}</div><div class="l">Tâches en cours</div>${statSub(counts.en_cours, "Personne n'est en tâche")}</div>
+        <div class="kpi danger"><div class="n">${counts.en_retard}</div><div class="l">En retard</div>${statSub(counts.en_retard, "Tout est sous contrôle")}</div>
+        <div class="kpi ok"><div class="n">${counts.terminee}</div><div class="l">Terminées</div>${statSub(counts.terminee, "Rien de bouclé pour l'instant")}</div>
+        <div class="kpi"><div class="n">${actifs.length}</div><div class="l">Personnel actif</div><div class="l" style="margin-top:3px;font-weight:500;color:var(--ok);">${disponibles} disponible${disponibles > 1 ? "s" : ""} pour une tâche</div></div>`;
+
+      const overdue = tasks.filter(t => t.statut === "en_retard");
+      const alerts = document.getElementById("alerts");
+      if (!overdue.length) {
+        alerts.innerHTML = `<div class="empty-ok"><div class="geni geni-xs" id="geniOk"></div>Aucune tâche en retard pour le moment.</div>`;
+        Geni.mount(document.getElementById("geniOk"), { state: "success", size: "xs" });
+      } else {
+        alerts.innerHTML = overdue.map(t => {
+          const names = (t.assigned_users || []).map(u => `${u.prenom} ${u.nom}`).join(", ") || "Non affilié";
+          const overdueMs = Date.now() - new Date(t.date_fin_prevue).getTime();
+          const totalMin = Math.max(0, Math.floor(overdueMs / 60000));
+          const h = Math.floor(totalMin / 60), m = totalMin % 60;
+          return `
+            <div class="alert-card">
+              <div class="left">
+                <div class="title btn-ic">${icon("triangle-alert")} ${escapeHtml(t.titre)}</div>
+                ${renderDesc(t.description)}
+              </div>
+              <div class="mid">
+                <div class="field"><div class="l">Personnel</div><div class="v">${escapeHtml(names)}</div></div>
+                <div class="field retard"><div class="l">Retard</div><div class="v">${h > 0 ? h + "h " : ""}${m}min</div></div>
+              </div>
+              <button class="primary small btn-ic" onclick="completeTask('${t.id}')">${icon("check")} Terminer</button>
+            </div>`;
+        }).join("");
+      }
+
+      const workload = document.getElementById("workload");
+      const active = ["en_cours", "en_retard", "a_faire"];
+      const maxCount = Math.max(1, ...actifs.map(u => tasks.filter(t => active.includes(t.statut) && (t.assigned_users || []).some(au => au.id === u.id)).length));
+      workload.innerHTML = actifs.length ? actifs.map(u => {
+        const n = tasks.filter(t => active.includes(t.statut) && (t.assigned_users || []).some(au => au.id === u.id)).length;
+        return `
+          <div class="workload-row">
+            ${avatarHtml(u)}
+            <div class="name">${u.prenom} ${u.nom}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${(n / maxCount) * 100}%"></div></div>
+            <div class="count">${n} tâche${n > 1 ? "s" : ""}</div>
+          </div>`;
+      }).join("") : `<p style="font-size:12.5px;color:var(--muted);">Aucun personnel actif.</p>`;
+    }
+
+    // ---------- Board (Tâches) ----------
+    function timeChip(t) {
+      if (t.statut === "archivee") return `<span class="time-chip neutral btn-ic">${icon("archive")} archivée</span>`;
+      if (t.statut === "terminee") return `<span class="time-chip ok btn-ic">${icon("check")} terminée</span>`;
+      if (!t.date_fin_prevue) return `<span class="time-chip neutral">${formatMinutes(t.minutes_allouees)}</span>`;
+      const ms = new Date(t.date_fin_prevue) - new Date();
+      const cls = ms <= 0 ? "danger" : ms < 5 * 60 * 1000 ? "warn" : "ok";
+      const totalSec = Math.max(0, Math.floor(ms / 1000));
+      const hours = Math.floor(totalSec / 3600);
+      const mins = Math.floor((totalSec % 3600) / 60);
+      const secs = totalSec % 60;
+      const label = ms <= 0 ? "écoulé" : hours > 0 ? `${hours}h ${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}` : `${mins}:${secs.toString().padStart(2, "0")}`;
+      return `<span class="time-chip ${cls}" data-fin="${t.date_fin_prevue}">${label}</span>`;
+    }
+
+    function toggleAcc(el) {
+      el.closest('.task-acc').classList.toggle('open');
+    }
+
+    function cardHtml(t) {
+      const av = (t.assigned_users || []).slice(0, 4).map(avatarHtml).join("");
+      const actions = [];
+      if (t.statut === "a_faire") {
+        actions.push(`<button class="primary small btn-ic" onclick="startTask('${t.id}')">${icon("play")} Démarrer</button>`);
+        actions.push(`<button class="ghost small" onclick="archiveTask('${t.id}')" title="Archiver">${icon("archive")}</button>`);
+      } else if (t.statut === "en_cours" || t.statut === "en_retard") {
+        actions.push(`<button class="primary small btn-ic" onclick="completeTask('${t.id}')">${icon("check")} Terminer</button>`);
+        actions.push(`<button class="ghost small" onclick="archiveTask('${t.id}')" title="Archiver">${icon("archive")}</button>`);
+      } else if (t.statut === "archivee") {
+        actions.push(`<button class="ghost small btn-ic" onclick="restoreTask('${t.id}')">${icon("rotate-ccw")} Restaurer</button>`);
+      } else if (t.statut === "terminee") {
+        actions.push(`<button class="ghost small" onclick="archiveTask('${t.id}')" title="Archiver">${icon("archive")}</button>`);
+      }
+
+      return `
+        <div class="card task-acc ${t.statut}" draggable="true" data-id="${t.id}" data-statut="${t.statut}">
+          <div class="task-acc-head" onclick="toggleAcc(this)">
+            <div class="task-acc-left">
+              <div class="avatars">${av || '<span style="font-size:11px;color:var(--muted);">NA</span>'}</div>
+              <div class="task-acc-title" title="${escapeHtml(t.titre)}">${escapeHtml(t.titre)}</div>
+            </div>
+            <div class="task-acc-right">
+              ${timeChip(t)}
+              <span class="task-acc-chevron">${icon("chevron-down")}</span>
+            </div>
+          </div>
+          <div class="task-acc-body">
+            ${renderDesc(t.description)}
+            <div class="card-actions" style="margin-top:0;">${actions.join("")}</div>
+          </div>
+        </div>`;
+    }
+
+    function renderBoard() {
+      const board = document.getElementById("board");
+      board.innerHTML = COLUMNS.map(col => {
+        const items = tasks.filter(t => t.statut === col.key);
+        const displayCount = col.key === "terminee" ? tasks.filter(t => t.statut === "archivee").length : items.length;
+        return `
+          <div class="column" data-status="${col.key}">
+            <div class="column-head">
+              <span class="name"><span class="flag" style="background:${col.flag}"></span>${col.label}</span>
+              <span class="count">${displayCount}</span>
+            </div>
+            <div class="card-list" data-status="${col.key}">
+              ${col.key === "archivee" 
+                  ? '<div class="empty">Visibles dans l\'onglet Archives</div>' 
+                  : (items.length ? items.map(cardHtml).join("") : '<div class="empty">Aucune tâche</div>')}
+            </div>
+            ${col.key === "a_faire" ? '<button class="add-card-btn" id="inlineAddTask">+ Ajouter une tâche</button>' : ""}
+          </div>`;
+      }).join("");
+      document.getElementById("inlineAddTask")?.addEventListener("click", openTaskModal);
+      wireDragAndDrop();
+    }
+
+    function tickTimers() {
+      document.querySelectorAll(".time-chip[data-fin]").forEach(el => {
+        const fin = el.getAttribute("data-fin");
+        const ms = new Date(fin) - new Date();
+        const cls = ms <= 0 ? "danger" : ms < 5 * 60 * 1000 ? "warn" : "ok";
+        el.className = "time-chip " + cls;
+        const totalSec = Math.max(0, Math.floor(ms / 1000));
+        const hours = Math.floor(totalSec / 3600);
+        const mins = Math.floor((totalSec % 3600) / 60);
+        const secs = totalSec % 60;
+        el.textContent = ms <= 0 ? "écoulé" : hours > 0 ? `${hours}h ${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}` : `${mins}:${secs.toString().padStart(2, "0")}`;
+      });
+    }
+    setInterval(tickTimers, 1000);
+
+    // ---------- Drag & drop (façon Trello) ----------
+    function wireDragAndDrop() {
+      document.querySelectorAll(".card").forEach(card => {
+        card.addEventListener("dragstart", (e) => {
+          card.classList.add("dragging");
+          e.dataTransfer.setData("text/plain", JSON.stringify({ id: card.dataset.id, from: card.dataset.statut }));
+        });
+        card.addEventListener("dragend", () => card.classList.remove("dragging"));
+      });
+      document.querySelectorAll(".column").forEach(col => {
+        col.addEventListener("dragover", (e) => { e.preventDefault(); col.classList.add("drag-over"); });
+        col.addEventListener("dragleave", () => col.classList.remove("drag-over"));
+        col.addEventListener("drop", async (e) => {
+          e.preventDefault(); col.classList.remove("drag-over");
+          const data = JSON.parse(e.dataTransfer.getData("text/plain") || "{}");
+          const to = col.dataset.status;
+          if (!data.id || data.from === to) return;
+          const action = DRAG_TRANSITIONS[`${data.from}->${to}`];
+          if (!action) { showToast(dragBlockedMessage(data.from, to), ""); return; }
+          try {
+            if (action === "start") await startTask(data.id, false);
+            else if (action === "complete") await completeTask(data.id, false);
+            else if (action === "archive") await archiveTask(data.id, false);
+            else if (action === "restore") await restoreTask(data.id, false);
+            await loadAll();
+          } catch (err) { showToast(err.message, "overdue"); }
+        });
+      });
+    }
+
+    function dragBlockedMessage(from, to) {
+      if (from === "archivee") return "Pour restaurer une tâche archivée, déposez-la sur « À faire ».";
+      if (to === "en_retard") return "Le statut « En retard » est calculé automatiquement, on ne peut pas l'imposer.";
+      if (from === "terminee") return "Une tâche terminée ne peut être que archivée.";
+      return "Ce déplacement n'est pas pris en charge — utilisez les boutons de la carte.";
+    }
+
+    // ---------- Actions tâches ----------
+    async function startTask(id, reload = true) { try { await api(`/tasks/${id}/start`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
+    async function completeTask(id, reload = true) { try { await api(`/tasks/${id}/complete`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
+    async function archiveTask(id, reload = true) { try { await api(`/tasks/${id}/archive`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
+    async function restoreTask(id, reload = true) { try { await api(`/tasks/${id}/restore`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
+    async function archiveUser(id) { try { await api(`/users/${id}/archive`, { method: "POST" }); await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
+
+    // ---------- Modale tâche ----------
+    function updateAssigneeSummary() {
+      const checked = Array.from(document.querySelectorAll("#taskUserChecks input:checked"));
+      const summary = document.getElementById("taskAssigneeSummary");
+      if (!checked.length) { summary.textContent = "Sélectionner le personnel"; return; }
+      const names = checked.map(cb => cb.parentElement.textContent.trim());
+      summary.textContent = checked.length === 1 ? names[0] : `${checked.length} sélectionnés : ${names.join(", ")}`;
+    }
+    document.getElementById("taskUserChecks").addEventListener("change", updateAssigneeSummary);
+
+    function openTaskModal() {
+      const checks = document.getElementById("taskUserChecks");
+      const actifs = users.filter(u => u.statut === "actif");
+      checks.innerHTML = actifs.length
+        ? actifs.map(u => `<label><input type="checkbox" value="${u.id}" /> ${u.prenom} ${u.nom}</label>`).join("")
+        : '<span class="empty">Aucun personnel actif — ajoutez d\'abord une personne.</span>';
+      document.getElementById("taskAssigneeDropdown").open = false;
+      updateAssigneeSummary();
+      document.getElementById("taskModalBackdrop").hidden = false;
+      document.getElementById("taskTitre").focus();
+    }
+    let taskImageFiles = []; // accumulated screenshots
+    function closeTaskModal() { document.getElementById("taskModalBackdrop").hidden = true; document.getElementById("taskForm").reset(); taskImageFiles = []; renderImagePreviews(); updateAssigneeSummary(); }
+    document.getElementById("openTaskModalBtn").addEventListener("click", openTaskModal);
+    document.getElementById("cancelTaskModal").addEventListener("click", closeTaskModal);
+    document.getElementById("taskModalBackdrop").addEventListener("click", (e) => { if (e.target.id === "taskModalBackdrop") closeTaskModal(); });
+
+    document.getElementById("taskForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const userIds = Array.from(document.querySelectorAll("#taskUserChecks input:checked")).map(i => i.value);
+      const h = parseInt(document.getElementById("taskHours").value || 0, 10);
+      const m = parseInt(document.getElementById("taskMinutes").value || 0, 10);
+      const totalMin = (h * 60) + m;
+      if (totalMin <= 0) {
+        showToast("Veuillez allouer au moins 1 minute", "overdue");
+        return;
+      }
+
+      let baseDesc = document.getElementById("taskDescription").value.trim();
+
+      const submitTask = async (finalDesc) => {
+        try {
+          await api("/tasks", { method: "POST", body: JSON.stringify({
+            titre: document.getElementById("taskTitre").value.trim(),
+            description: finalDesc || null,
+            minutes_allouees: totalMin,
+            user_ids: userIds,
+          })});
+          closeTaskModal();
+          document.getElementById("taskHours").value = 0;
+          document.getElementById("taskMinutes").value = 15;
+          await loadAll();
+        } catch (err) { showToast(err.message, "overdue"); }
+      };
+
+      if (taskImageFiles.length > 0) {
+        const processFile = (file) => new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement("canvas");
+              let w = img.width, hImg = img.height;
+              if (w > 800) { hImg = Math.round(hImg * 800 / w); w = 800; }
+              canvas.width = w; canvas.height = hImg;
+              canvas.getContext("2d").drawImage(img, 0, 0, w, hImg);
+              resolve(`[IMG]${canvas.toDataURL("image/jpeg", 0.7)}[/IMG]`);
+            };
+            img.src = ev.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+        Promise.all(taskImageFiles.map(processFile)).then(imgTags => {
+          submitTask(baseDesc + (baseDesc ? "\n\n" : "") + imgTags.join("\n"));
+        });
+      } else {
+        submitTask(baseDesc);
+      }
+    });
+
+    function renderImagePreviews() {
+      const container = document.getElementById("taskImagePreviewContainer");
+      container.innerHTML = "";
+      taskImageFiles.forEach((file, idx) => {
+        const wrapper = document.createElement("div");
+        wrapper.style.cssText = "position:relative; display:inline-block; flex-shrink:0;";
+        const img = document.createElement("img");
+        img.style.cssText = "height:60px; border-radius:4px; border:1px solid var(--border); object-fit:cover;";
+        const removeBtn = document.createElement("span");
+        removeBtn.textContent = "✕";
+        removeBtn.style.cssText = "position:absolute; top:-6px; right:-6px; background:#dc2626; color:#fff; border-radius:50%; width:18px; height:18px; font-size:11px; display:flex; align-items:center; justify-content:center; cursor:pointer;";
+        removeBtn.onclick = () => { taskImageFiles.splice(idx, 1); renderImagePreviews(); };
+        const reader = new FileReader();
+        reader.onload = (ev) => { 
+          img.src = ev.target.result; 
+          img.style.cursor = "pointer";
+          img.onclick = () => {
+            document.getElementById("imagePreviewFull").src = ev.target.result;
+            document.getElementById("imagePreviewModalBackdrop").hidden = false;
+          };
+        };
+        reader.readAsDataURL(file);
+        wrapper.appendChild(img);
+        wrapper.appendChild(removeBtn);
+        container.appendChild(wrapper);
+      });
+      
+      const btn = document.getElementById("taskImageBtn");
+      const txt = document.getElementById("taskImageCountText");
+      if (taskImageFiles.length > 0) {
+        btn.textContent = "Ajouter à nouveau";
+        txt.textContent = `${taskImageFiles.length}/15 sélectionnée(s)`;
+      } else {
+        btn.textContent = "Ajouter des images";
+        txt.textContent = "";
+      }
+    }
+
+    document.getElementById("closeImagePreviewModal").addEventListener("click", () => document.getElementById("imagePreviewModalBackdrop").hidden = true);
+    document.getElementById("imagePreviewModalBackdrop").addEventListener("click", (e) => { if (e.target.id === "imagePreviewModalBackdrop") document.getElementById("imagePreviewModalBackdrop").hidden = true; });
+
+    document.getElementById("taskImage").addEventListener("change", (e) => {
+      const newFiles = Array.from(e.target.files);
+      if (taskImageFiles.length + newFiles.length > 15) {
+        showToast(`Maximum 15 captures. Il vous reste ${15 - taskImageFiles.length} emplacement(s).`, "overdue");
+        e.target.value = "";
+        return;
+      }
+      taskImageFiles.push(...newFiles);
+      e.target.value = "";
+      renderImagePreviews();
+    });
+
+    // ---------- Employés ----------
+    function renderEmployees() {
+      const grid = document.getElementById("employeeGrid");
+      const active = ["en_cours", "en_retard", "a_faire"];
+      const cards = users.map(u => {
+        const n = tasks.filter(t => active.includes(t.statut) && (t.assigned_users || []).some(au => au.id === u.id)).length;
+        return `
+          <div class="employee-card ${u.statut}">
+            <span class="badge-status ${u.statut}">${u.statut}</span>
+            <div class="photo-wrap">
+              <div class="avatar-lg" style="${avatarStyle(u)}">${u.photo_url ? "" : initials(u)}</div>
+              <div class="cam-btn" title="Changer la photo" onclick="pickAvatar('${u.id}')">${icon("camera")}</div>
+            </div>
+            <div class="name">${u.prenom} ${u.nom}</div>
+            <div class="role">${u.role}</div>
+            <div class="load"><b>${n}</b> tâche${n > 1 ? "s" : ""} active${n > 1 ? "s" : ""}</div>
+            ${u.statut === "actif" ? `<button class="danger-text" onclick="archiveUser('${u.id}')">Archiver</button>` : `<span style="font-size:11.5px;color:var(--muted);">Archivé</span>`}
+          </div>`;
+      }).join("");
+      grid.innerHTML = cards + `
+        <button class="add-employee-card" id="openUserModalBtn">
+          <span class="plus">+</span> Nouvel employé
+        </button>`;
+      document.getElementById("openUserModalBtn").addEventListener("click", openUserModal);
+    }
+
+    // ---------- Archives ----------
+    // "Stocker et classer" les tâches archivées : recherche par titre, filtre
+    // par personnel affilié, tri par date d'archivage (updated_at) ou titre.
+    function renderArchives() {
+      const archived = tasks.filter(t => t.statut === "archivee");
+
+      const empSelect = document.getElementById("archiveEmployeeFilter");
+      const prevEmp = empSelect.value;
+      const employeesInArchive = new Map();
+      archived.forEach(t => (t.assigned_users || []).forEach(u => employeesInArchive.set(u.id, `${u.prenom} ${u.nom}`)));
+      empSelect.innerHTML = '<option value="">Tout le personnel</option>' +
+        Array.from(employeesInArchive.entries()).map(([id, name]) => `<option value="${id}">${escapeHtml(name)}</option>`).join("");
+      empSelect.value = prevEmp;
+
+      const search = (document.getElementById("archiveSearch").value || "").trim().toLowerCase();
+      const empFilter = empSelect.value;
+      const dateFilter = document.getElementById("archiveDateFilter").value;
+      const sort = document.getElementById("archiveSort").value;
+
+      let filtered = archived.filter(t => {
+        if (search && !t.titre.toLowerCase().includes(search)) return false;
+        if (empFilter && !(t.assigned_users || []).some(u => u.id === empFilter)) return false;
+        if (dateFilter) {
+          const tDate = new Date(t.updated_at).toISOString().split('T')[0];
+          if (tDate !== dateFilter) return false;
+        }
+        return true;
+      });
+
+      filtered.sort((a, b) => {
+        if (sort === "titre") return a.titre.localeCompare(b.titre);
+        const da = new Date(a.updated_at), db = new Date(b.updated_at);
+        return sort === "old" ? da - db : db - da;
+      });
+
+      const list = document.getElementById("archiveList");
+      if (!archived.length) {
+        list.innerHTML = `<p style="font-size:13px;color:var(--muted);">Aucune tâche archivée pour le moment.</p>`;
+        return;
+      }
+      if (!filtered.length) {
+        list.innerHTML = `<p style="font-size:13px;color:var(--muted);">Aucune tâche archivée ne correspond à ces critères.</p>`;
+        return;
+      }
+      list.innerHTML = filtered.map(t => {
+        const names = (t.assigned_users || []).map(u => `${u.prenom} ${u.nom}`).join(", ") || "Non affilié";
+        return `
+          <div class="archive-row">
+            <div class="archive-main">
+              <div class="archive-title">${escapeHtml(t.titre)}</div>
+              <div class="archive-meta">${escapeHtml(names)} · ${formatMinutes(t.minutes_allouees)} alloué${t.minutes_allouees > 1 ? "s" : ""}</div>
+            </div>
+            <div class="archive-date">Archivée le ${formatDateFr(t.updated_at)}</div>
+            <button class="ghost small btn-ic" onclick="viewTask('${t.id}')">${icon("eye")} Voir</button>
+            <button class="ghost small btn-ic" onclick="restoreTask('${t.id}')">${icon("rotate-ccw")} Restaurer</button>
+          </div>`;
+      }).join("");
+      lucide.createIcons();
+    }
+    
+    function viewTask(id) {
+      const t = tasks.find(x => x.id === id);
+      if (!t) return;
+      document.getElementById("viewTaskTitre").textContent = t.titre;
+      document.getElementById("viewTaskDesc").innerHTML = renderDesc(t.description);
+      document.getElementById("viewModalBackdrop").hidden = false;
+    }
+    document.getElementById("closeViewModal").addEventListener("click", () => document.getElementById("viewModalBackdrop").hidden = true);
+    document.getElementById("viewModalBackdrop").addEventListener("click", (e) => { if (e.target.id === "viewModalBackdrop") document.getElementById("viewModalBackdrop").hidden = true; });
+    ["archiveSearch", "archiveEmployeeFilter", "archiveDateFilter", "archiveSort"].forEach(id => {
+      document.getElementById(id).addEventListener("input", renderArchives);
+      document.getElementById(id).addEventListener("change", renderArchives);
+    });
+
+    let avatarTargetUserId = null;
+    function pickAvatar(userId) {
+      avatarTargetUserId = userId;
+      document.getElementById("avatarChangeInput").click();
+    }
+    document.getElementById("avatarChangeInput").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      e.target.value = "";
+      if (!file || !avatarTargetUserId) return;
+      try {
+        const fd = new FormData(); fd.append("file", file);
+        await api(`/users/${avatarTargetUserId}/photo`, { method: "POST", body: fd });
+        await loadAll();
+      } catch (err) { showToast(err.message, "overdue"); }
+    });
+
+    // ---------- Modale employé ----------
+    let newUserPhotoFile = null;
+    function openUserModal() {
+      newUserPhotoFile = null;
+      const preview0 = document.getElementById("userPhotoPreview");
+      preview0.style.backgroundImage = "";
+      preview0.innerHTML = icon("user");
+      lucide.createIcons();
+      document.getElementById("userModalBackdrop").hidden = false;
+      document.getElementById("userPrenom").focus();
+    }
+    function closeUserModal() { document.getElementById("userModalBackdrop").hidden = true; document.getElementById("userForm").reset(); }
+    document.getElementById("cancelUserModal").addEventListener("click", closeUserModal);
+    document.getElementById("userModalBackdrop").addEventListener("click", (e) => { if (e.target.id === "userModalBackdrop") closeUserModal(); });
+
+    document.getElementById("userPhotoInput").addEventListener("change", (e) => {
+      newUserPhotoFile = e.target.files[0] || null;
+      const preview = document.getElementById("userPhotoPreview");
+      if (newUserPhotoFile) {
+        preview.style.backgroundImage = `url('${URL.createObjectURL(newUserPhotoFile)}')`;
+        preview.innerHTML = "";
+      } else {
+        preview.style.backgroundImage = "";
+        preview.innerHTML = icon("user");
+        lucide.createIcons();
+      }
+    });
+
+    document.getElementById("userForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        const created = await api("/users", { method: "POST", body: JSON.stringify({
+          prenom: document.getElementById("userPrenom").value.trim(),
+          nom: document.getElementById("userNom").value.trim(),
+          role: document.getElementById("userRole").value,
+        })});
+        if (newUserPhotoFile) {
+          const fd = new FormData(); fd.append("file", newUserPhotoFile);
+          await api(`/users/${created.id}/photo`, { method: "POST", body: fd });
+        }
+        closeUserModal();
+        await loadAll();
+      } catch (err) { showToast(err.message, "overdue"); }
+    });
+
+    // ---------- Chargement ----------
+    async function loadAll() {
+      try {
+        [users, tasks] = await Promise.all([api("/users"), api("/tasks")]);
+        renderDashboard(); renderBoard(); renderEmployees(); renderArchives();
+        lucide.createIcons();
+      } catch (e) { console.error(e); }
+    }
+
+    function connectWS() {
+      const ws = new WebSocket(WS_URL);
+      ws.onmessage = (evt) => {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === "task.created") { showToast(`Nouvelle tâche : ${msg.task.titre}`, ""); beep(880, 200); }
+        else if (msg.type === "task.completed") { showToast(`Tâche terminée : ${msg.task.titre}`, "completed"); beep(520, 250); }
+        else if (msg.type === "task.overdue") { showToast(`Tâche en retard : ${msg.task.titre}`, "overdue"); beep(300, 350); }
+        loadAll();
+      };
+      ws.onclose = () => setTimeout(connectWS, 2000);
+    }
+
+    lucide.createIcons();
+    refreshKeyPill();
+    loadAll();
+    connectWS();
+  </script>
+</body>
+</html>

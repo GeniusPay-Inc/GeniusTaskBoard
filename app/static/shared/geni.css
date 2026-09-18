@@ -1,0 +1,76 @@
+/* Geni — mascotte GeniusPay : tailles + expressions par état (data-state sur le <svg>). */
+
+.geni { display: inline-flex; align-items: center; justify-content: center; line-height: 0; }
+.geni-svg { width: 100%; height: auto; display: block; }
+.geni-xs  { width: 40px; }
+.geni-sm  { width: 72px; }
+.geni-md  { width: 120px; }
+.geni-lg  { width: 180px; }
+.geni-xl  { width: 260px; }
+
+/* ---------- États par défaut (idle) ---------- */
+.geni-svg .happy-eye,
+.geni-svg #brows,
+.geni-svg .m-grin,
+.geni-svg .m-neutral,
+.geni-svg .m-think,
+.geni-svg #geni-loader,
+.geni-svg #geni-check,
+.geni-svg #geni-think {
+  opacity: 0;
+}
+.geni-svg #eyeL-ball, .geni-svg #eyeR-ball, .geni-svg .glint, .geni-svg #lidL, .geni-svg #lidR,
+.geni-svg .m-smile {
+  opacity: 1;
+  transition: opacity .2s ease;
+}
+
+/* Respiration douce + rotation lente de l'aura, toujours actives */
+.geni-svg #geni-aura { animation: geni-breathe 3.6s ease-in-out infinite; transform-origin: 180px 196px; }
+.geni-svg #aura-rings { animation: geni-spin 18s linear infinite; transform-origin: 180px 210px; }
+.geni-svg #geni-spark { animation: geni-twinkle 2.2s ease-in-out infinite; transform-origin: 180px 30px; }
+.geni-svg #geni-coin { animation: geni-float 3.2s ease-in-out infinite; transform-origin: 286px 74px; }
+
+@keyframes geni-breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+@keyframes geni-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes geni-twinkle { 0%,100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.15); } }
+@keyframes geni-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+/* ---------- welcome : grand sourire, yeux joyeux ---------- */
+.geni-svg[data-state="welcome"] .m-smile { opacity: 0; }
+.geni-svg[data-state="welcome"] .m-grin { opacity: 1; }
+.geni-svg[data-state="welcome"] .happy-eye { opacity: 1; }
+.geni-svg[data-state="welcome"] #eyeL-ball,
+.geni-svg[data-state="welcome"] #eyeR-ball,
+.geni-svg[data-state="welcome"] .glint { opacity: 0; }
+.geni-svg[data-state="welcome"] #geni-coin { animation: geni-bounce .9s ease-in-out infinite; }
+@keyframes geni-bounce { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-8px) rotate(-6deg); } }
+
+/* ---------- thinking : sourcils froncés, bulle de réflexion ---------- */
+.geni-svg[data-state="thinking"] .m-smile { opacity: 0; }
+.geni-svg[data-state="thinking"] .m-think { opacity: 1; }
+.geni-svg[data-state="thinking"] #brows { opacity: 1; }
+.geni-svg[data-state="thinking"] #geni-think { opacity: 1; }
+.geni-svg[data-state="thinking"] #geni-think .td { animation: geni-think-pulse 1.4s ease-in-out infinite; }
+.geni-svg[data-state="thinking"] #geni-think .td2 { animation-delay: .15s; }
+.geni-svg[data-state="thinking"] #geni-think .td3 { animation-delay: .3s; }
+@keyframes geni-think-pulse { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
+
+/* ---------- loading : anneau qui tourne, visage neutre ---------- */
+.geni-svg[data-state="loading"] .m-smile { opacity: 0; }
+.geni-svg[data-state="loading"] .m-neutral { opacity: 1; }
+.geni-svg[data-state="loading"] #geni-loader { opacity: 1; animation: geni-spin 1s linear infinite; transform-origin: 180px 138px; }
+
+/* ---------- success : badge check, sourire, yeux joyeux ---------- */
+.geni-svg[data-state="success"] .m-smile { opacity: 0; }
+.geni-svg[data-state="success"] .m-grin { opacity: 1; }
+.geni-svg[data-state="success"] .happy-eye { opacity: 1; }
+.geni-svg[data-state="success"] #eyeL-ball,
+.geni-svg[data-state="success"] #eyeR-ball,
+.geni-svg[data-state="success"] .glint { opacity: 0; }
+.geni-svg[data-state="success"] #geni-check { opacity: 1; animation: geni-pop .4s ease-out; }
+@keyframes geni-pop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .geni-svg * { animation: none !important; }
+}
