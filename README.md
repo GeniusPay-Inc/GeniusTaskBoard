@@ -24,9 +24,11 @@ docker compose up --build
 
 Les tables sont créées automatiquement au démarrage en dev (`init_db`). Pour la
 prod, mettre en place Alembic (`alembic init alembic`) et retirer `init_db()`.
-Les photos de profil sont stockées sur disque dans `app/static/uploads/`
-(non versionné) — prévoir un stockage objet (S3, etc.) et un volume persistant
-si l'API tourne sur plusieurs instances ou est redéployée sans volume partagé.
+La base SQLite et les photos de profil sont stockées sur disque dans `data/`
+(non versionné, `data/taskboard.db` + `data/uploads/`) — **ce dossier doit
+reposer sur un volume/disque persistant en production**, sinon tout
+redéploiement repart d'un état vide (voir « Déploiement » plus bas). Prévoir
+un stockage objet (S3, etc.) si l'API tourne un jour sur plusieurs instances.
 
 ## Clé API
 
@@ -61,12 +63,60 @@ l'échéance est dépassée passe automatiquement en `en_retard` (vérification
 toutes les 15s, voir `app/overdue_worker.py`) et diffuse l'événement
 `task.overdue`.
 
+## CRUD complet — personnel et tâches
+
+En plus du cycle de vie métier (démarrer/terminer/archiver/restaurer/affilier),
+`users` et `tasks` exposent un CRUD complet :
+
+| | Personnel (`/api/v1/users`) | Tâches (`/api/v1/tasks`) |
+|---|---|---|
+| Create | `POST` | `POST` |
+| Read | `GET`, `GET /{id}` | `GET`, `GET /{id}` |
+| Update | `PATCH /{id}` | `PATCH /{id}` |
+| Delete | `DELETE /{id}` (définitif) | `DELETE /{id}` (définitif) |
+
+`DELETE` est une suppression **définitive**, à distinguer de `/archive` qui
+est réversible (`/restore` pour les tâches). Dans le back-office, la
+suppression n'est proposée que sur les fiches déjà archivées (double
+confirmation implicite) et demande une confirmation explicite avant l'appel.
+Supprimer une personne retire ses affiliations aux tâches (l'historique des
+tâches elles-mêmes est conservé) ; supprimer une tâche retire ses
+affiliations avec elle.
+
+Chaque personne et chaque tâche porte aussi `created_at` (date d'inscription
+du compte / de création de la tâche) et `updated_at` (dernière modification),
+affichés dans le back-office (fiches employé, cartes du Kanban).
+
 ## Déploiement — task.geniuspay.tech
 
-Le domaine `task.geniuspay.tech` est prévu pour l'instance de production. Le
-`docker-compose.yml` inclut un service **Caddy** qui reçoit le trafic sur les
-ports 80/443, obtient et renouvelle automatiquement le certificat TLS
-(Let's Encrypt) pour ce domaine, et reverse-proxy vers l'API interne.
+Toutes les données qui doivent survivre à un redéploiement (base SQLite,
+photos de profil, sauvegardes automatiques) sont regroupées sous un seul
+dossier : **`data/`** (`data/taskboard.db`, `data/uploads/`, `data/backups/`).
+Peu importe la plateforme, la règle est la même : **`data/` doit reposer sur
+un volume/disque persistant, sinon tout redémarrage du conteneur repart
+d'un disque vide.**
+
+### Sur Railway (déploiement actuel)
+
+Railway construit directement l'image à partir du `Dockerfile` — il ne lit
+**pas** `docker-compose.yml` ni le script `scripts/migrate-to-named-volumes.sh`
+(qui ne s'appliquent qu'à un déploiement manuel décrit plus bas). Sans volume
+attaché à `/app/data`, chaque redéploiement (nouveau build, push sur la
+branche connectée, redémarrage) repart d'un système de fichiers vierge — c'est
+ce qui explique la perte de la base à chaque déploiement.
+
+**Procédure complète, définitive et à ne faire qu'une seule fois** (dashboard
+Railway, checklist de vérification avant de ressaisir les données réelles,
+checklist de mise en production) : voir
+[`docs/DEPLOY_RAILWAY.md`](docs/DEPLOY_RAILWAY.md).
+
+### Sur un VPS / serveur géré à la main (docker-compose)
+
+`docker-compose.yml` reste disponible pour un déploiement classique sur un
+serveur où vous avez un accès shell direct (pas Railway/Render/Fly.io). Il
+inclut un service **Caddy** qui reçoit le trafic sur les ports 80/443,
+obtient et renouvelle automatiquement le certificat TLS (Let's Encrypt), et
+reverse-proxy vers l'API interne.
 
 1. Pointer un enregistrement DNS `A` (et `AAAA` si IPv6) de `task.geniuspay.tech`
    vers l'IP publique du serveur.
@@ -88,12 +138,52 @@ Le port 8000 de l'API reste aussi publié directement (utile en debug local),
 mais en production seul le trafic via Caddy (443) doit être exposé au public
 — fermer le port 8000 au niveau du pare-feu du serveur.
 
+#### Redéployer sans perdre les données (VPS)
+
+`data/` vit dans un **volume Docker nommé** (`taskboard_data`), pas dans le
+dossier du projet. Résultat : un redéploiement normal ne touche jamais aux
+données —
+```bash
+git pull
+docker compose up --build -d
+```
+— y compris après un `git clean`/`git reset --hard` du dossier, ou un nouveau
+`git clone` dans un dossier différent : ce volume est géré par Docker en
+dehors du répertoire du projet et survit tant qu'il n'est pas supprimé
+explicitement.
+
+**Ne jamais faire ceci en production**, ça efface tout le personnel et
+toutes les tâches de façon définitive :
+```bash
+docker compose down -v   # le -v supprime le volume nommé — JAMAIS en prod
+docker volume rm taskboard_data
+```
+`docker compose down` (sans `-v`) et `docker compose up --build -d` restent
+sans risque.
+
+**Migration depuis une installation existante** (bind mounts `./data` /
+`./uploads` vers le volume nommé) : lancer une fois, sur le serveur, après
+le `git pull` :
+```bash
+./scripts/migrate-to-named-volumes.sh
+```
+Sans effet si déjà migré ou sur une installation neuve.
+
+### Dans tous les cas
+
+Un instantané de la base est automatiquement conservé (`data/backups/`, les
+5 derniers) à chaque démarrage de l'API — un filet de sécurité en cas de
+mauvaise manip ou d'erreur de migration, pas une garantie contre la
+suppression du volume/disque lui-même.
+
 ## Identité visuelle
 
 - Icônes : [Lucide](https://lucide.dev) chargé en CDN (`<i data-lucide="...">` +
   `lucide.createIcons()`), aucune dépendance locale à installer.
 - Logo : le lockup GeniusPay (`Genius` + badge `Pay`) est recréé en HTML/CSS
   directement dans les en-têtes (`.gp-logo`), pas une image — facile à retoucher.
+  Police **Poppins** (900) en CDN Google Fonts pour se rapprocher du rendu
+  arrondi du logo officiel.
 - Mascotte **Geni** : `app/static/shared/geni.js` + `geni.css`, servis via le
   mount `/assets`. C'est le composant SVG fourni par GeniusPay, réécrit en JS
   natif (le projet est un site statique FastAPI, sans Laravel/Alpine) :
@@ -119,21 +209,68 @@ bandeau « Activer le son » apparaît au chargement — à cliquer une fois sur
 l'écran TV pour débloquer les annonces et les bips.
 
 Chaque tâche terminée déclenche aussi un **spotlight** : une carte plein
-écran (photo/avatar, titre, personnel, temps alloué) reprenant le style des
-gabarits fournis (bandeau coloré, champs clé/valeur), affichée ~7s puis
-enchaînée avec la suivante si plusieurs tâches se terminent d'affilée.
+écran (photo/avatar mis en grand plan avec un anneau pulsé, titre, personnel,
+temps alloué) reprenant le style des gabarits fournis (bandeau coloré, champs
+clé/valeur), affichée ~7s puis enchaînée avec la suivante si plusieurs tâches
+se terminent d'affilée. Si la tâche est terminée dans les délais, un badge
+« +10 points gagnés » s'affiche et la voix l'annonce. Le spotlight inclut
+aussi un **récapitulatif** des autres tâches encore actives (« Pendant ce
+temps… ») avec le prénom, le titre et le temps restant de chaque personne pas
+encore terminée, annoncé oralement à la suite.
+
+## Points de ponctualité
+
+Chaque tâche terminée dans le temps qui lui était alloué (`date_fin_reelle`
+≤ `date_fin_prevue`) rapporte **10 points** à chaque personne affiliée
+(`User.points`, cumulé côté serveur dans `POST /tasks/{id}/complete`). Les
+points sont consultables :
+- sur chaque fiche employé (back-office, vue `Employés`) ;
+- dans un mini classement trié par points (back-office, vue `Dashboard` →
+  « Classement — points de ponctualité ») ;
+- via l'API (`points` dans `GET /api/v1/users`).
 
 ## Tableau Kanban et archives
 
 Le tableau (`Tâches`) a 5 colonnes : À faire, En cours, En retard, Terminées,
-Archivées. Le glisser-déposer gère tous les déplacements qui ont un sens
-métier (démarrer, terminer, archiver, restaurer une tâche archivée vers
-« À faire ») ; un déplacement sans action correspondante affiche un message
-explicatif au lieu d'échouer silencieusement.
+Archivées. Chaque carte est un accordéon (cliquer l'en-tête pour déplier) —
+description, captures d'écran et actions n'apparaissent qu'à l'ouverture, pour
+garder le board compact. Le glisser-déposer gère tous les déplacements qui ont
+un sens métier (démarrer, terminer, archiver, restaurer une tâche archivée
+vers « À faire ») ; un déplacement sans action correspondante affiche un
+message explicatif au lieu d'échouer silencieusement.
+
+Le temps alloué se saisit en heures **et/ou** minutes (`taskHours` +
+`taskMinutes`, convertis en minutes côté client) ; l'affichage du compte à
+rebours passe automatiquement en `Hh MM:SS` au-delà d'une heure.
+
+Une tâche peut avoir jusqu'à 15 captures d'écran (JPEG/PNG/WebP, 5 Mo max
+chacune) : `POST /api/v1/tasks/{id}/images`, stockées comme de vrais fichiers
+sous `data/uploads/tasks/{id}/` (jamais en base64 dans la description — voir
+la note de performance ci-dessous) et affichées en vignettes sur la carte et
+l'écran TV, avec visionneuse plein écran au clic.
 
 La vue `Archives` liste les tâches archivées avec recherche par titre, filtre
-par personnel affilié et tri par date d'archivage (`updated_at`) ou par
-titre — chaque tâche peut y être restaurée en un clic.
+par personnel affilié, par date d'archivage, et tri (`updated_at` ou titre) —
+chaque tâche peut y être consultée en détail (« Voir », avec ses captures) ou
+restaurée en un clic.
+
+## Idempotence et fiabilité
+
+Chaque bouton d'action (démarrer/terminer/archiver/restaurer/supprimer) se
+désactive dès le clic pour empêcher un double-clic de partir deux fois — et
+n'est réactivé qu'en cas d'échec (un succès recharge la vue, qui régénère de
+toute façon des boutons neufs). Ce n'est qu'un filet côté interface : la
+vraie garantie est côté serveur — `start`/`complete`/`archive`
+(`app/routers/tasks.py`) sont eux-mêmes des no-op sûrs si rejoués sur une
+tâche déjà dans l'état visé (aucune double-attribution de points possible,
+même en cas de requête dupliquée par le réseau ou de deux personnes cliquant
+en même temps).
+
+**Note de performance** : les captures d'écran ne sont jamais encodées en
+base64 dans la description d'une tâche — cela alourdirait chaque chargement
+du tableau et de l'écran TV (repris à chaque action et à chaque événement
+WebSocket) au fur et à mesure que l'historique grandit. Elles vivent comme
+fichiers réels sous `data/uploads/`, référencés par une simple URL.
 
 ## Structure
 

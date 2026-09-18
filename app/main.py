@@ -40,8 +40,10 @@ app.include_router(ws.router)
 app.mount("/dashboard", StaticFiles(directory="app/static/dashboard", html=True), name="dashboard")
 app.mount("/admin", StaticFiles(directory="app/static/admin", html=True), name="admin")
 app.mount("/assets", StaticFiles(directory="app/static/shared"), name="assets")
-Path("app/static/uploads/avatars").mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="app/static/uploads"), name="uploads")
+# Les photos vivent sous data/ (comme la base SQLite) pour qu'un seul volume
+# persistant (data/) couvre tout ce qui doit survivre à un redéploiement.
+Path("data/uploads/avatars").mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="data/uploads"), name="uploads")
 
 
 @app.get("/", include_in_schema=False)

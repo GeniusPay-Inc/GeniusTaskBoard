@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime, timezone
 
@@ -30,11 +31,16 @@ class UserOut(BaseModel):
     role: UserRole
     statut: UserStatus
     photo_url: str | None = None
+    points: int = 0
     created_at: datetime
+    updated_at: datetime
 
-    @field_validator("created_at", mode="after")
+    @field_validator("created_at", "updated_at", mode="after")
     @classmethod
     def force_utc(cls, v: datetime | None) -> datetime | None:
+        # SQLite ne conserve pas le fuseau horaire à la relecture : sans ce
+        # correctif, le JSON renvoyé au client perd le "Z"/offset UTC et
+        # `new Date(iso)` côté navigateur interprète la date en heure locale.
         if v is not None and v.tzinfo is None:
             return v.replace(tzinfo=timezone.utc)
         return v
@@ -76,6 +82,17 @@ class TaskOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     assigned_users: list[UserOut] = Field(default_factory=list)
+    image_urls: list[str] = Field(default_factory=list)
+
+    @field_validator("image_urls", mode="before")
+    @classmethod
+    def parse_image_urls(cls, v):
+        # Le modèle ORM stocke une chaîne JSON (ou None) dans cette colonne.
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
 
     @field_validator("date_debut", "date_fin_prevue", "date_fin_reelle", "created_at", "updated_at", mode="after")
     @classmethod

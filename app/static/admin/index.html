@@ -4,11 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TaskBoard — Back-office</title>
-<script src="https://unpkg.com/lucide@1.43.0/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="/assets/geni.css">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<script src="https://unpkg.com/lucide@1.43.0/dist/umd/lucide.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/geni.css">
 <style>
   :root {
     --bg: #f0f2f7;
@@ -64,9 +67,9 @@
     position: sticky; top: 0; z-index: 20;
   }
   .brand { display: flex; align-items: center; gap: 12px; }
-  .gp-logo { display: flex; align-items: center; font-weight: 800; font-size: 16px; white-space: nowrap; letter-spacing: -.01em; }
+  .gp-logo { display: flex; align-items: center; font-family: 'Poppins', system-ui, sans-serif; font-weight: 900; font-size: 16px; white-space: nowrap; letter-spacing: -.01em; }
   .gp-logo .g { color: var(--ink); }
-  .gp-logo .p { background: #2563eb; color: #fff; padding: 1px 7px 2px; border-radius: 6px; margin-left: 3px; }
+  .gp-logo .p { background: #2563eb; color: #fff; padding: 2px 10px 4px; border-radius: 8px; margin-left: 5px; }
   .brand .product {
     font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
     padding-left: 12px; margin-left: 2px; border-left: 1px solid var(--border);
@@ -117,7 +120,6 @@
   nav.sidebar {
     width: 208px; flex: none; padding: 16px 10px; position: sticky; top: 57px;
     height: calc(100vh - 57px); display: flex; flex-direction: column; gap: 2px;
-    background: var(--card-bg); border-right: 1px solid var(--border);
   }
   nav.sidebar button.nav-item {
     display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent;
@@ -166,6 +168,13 @@
   .workload-row .bar-fill { height: 100%; background: var(--brand); border-radius: 999px; }
   .workload-row .count { font-size: 12px; color: var(--muted); font-weight: 700; width: 70px; text-align: right; }
 
+  .leaderboard-row { display: flex; align-items: center; gap: 12px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+  .leaderboard-row .rank { width: 20px; font-size: 13px; font-weight: 800; color: var(--muted); text-align: center; flex: none; }
+  .leaderboard-row:nth-child(1) .rank { color: var(--warn); }
+  .leaderboard-row .name { font-weight: 700; font-size: 13.5px; flex: 1; }
+  .leaderboard-row .pts { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; color: var(--warn); }
+  .leaderboard-row .pts svg.lucide { width: 14px; height: 14px; }
+
   /* ---------- Board (Tâches) ---------- */
   .board { display: flex; gap: 14px; overflow-x: auto; align-items: flex-start; padding-bottom: 10px; }
   .column {
@@ -195,6 +204,7 @@
 
   .card .title { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; line-height: 1.35; }
   .card .desc { font-size: 12px; color: var(--muted); margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .meta-dates { font-size: 10.5px; color: var(--muted); margin-bottom: 6px; }
   .card .meta-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
   .avatars { display: flex; }
   .avatar {
@@ -211,6 +221,20 @@
   .time-chip.danger { background: var(--danger-bg); color: var(--danger); }
   .card .card-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
   .card .card-actions button { flex: 1; }
+
+  /* ---------- Carte de tâche accordéon (compact sur le board) ---------- */
+  .card.task-acc { padding: 0; overflow: hidden; }
+  .task-acc-head { padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; }
+  .task-acc-head:hover { background: var(--column-bg); }
+  .task-acc-left { display: flex; align-items: center; gap: 8px; overflow: hidden; min-width: 0; }
+  .task-acc-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .task-acc-right { display: flex; align-items: center; gap: 6px; flex: none; }
+  .task-acc-chevron { transition: transform .2s; color: var(--muted); display: inline-flex; align-items: center; }
+  .card.task-acc.open .task-acc-chevron { transform: rotate(180deg); }
+  .task-acc-body { display: none; padding: 0 10px 10px; }
+  .card.task-acc.open .task-acc-body { display: block; }
+  .task-images { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; }
+  .task-images img { height: 56px; border-radius: 6px; border: 1px solid var(--border); object-fit: cover; cursor: pointer; flex: none; }
 
   .add-card-btn {
     background: transparent; color: var(--muted); text-align: left; padding: 8px 6px; font-size: 12.5px;
@@ -240,8 +264,14 @@
   .photo-wrap .cam-btn svg.lucide { width: 13px; height: 13px; }
   .employee-card .name { font-weight: 700; font-size: 14.5px; margin-top: 2px; }
   .employee-card .role { font-size: 12px; color: var(--muted); margin-top: 2px; margin-bottom: 10px; }
-  .employee-card .load { font-size: 11.5px; color: var(--muted); margin-bottom: 10px; }
+  .employee-card .load { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
   .employee-card .load b { color: var(--ink); }
+  .employee-card .dates { font-size: 10.5px; color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
+  .employee-card .points {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; color: var(--warn);
+    background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 999px; padding: 2px 10px; margin-bottom: 10px;
+  }
+  .employee-card .points svg.lucide { width: 12px; height: 12px; }
   .add-employee-card {
     border: 2px dashed var(--border); border-radius: 14px; display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 6px; color: var(--muted); font-weight: 700; font-size: 13px; min-height: 190px;
@@ -285,6 +315,16 @@
     display: flex; align-items: center; justify-content: center; color: var(--muted); flex: none;
   }
   .photo-picker .preview svg.lucide { width: 24px; height: 24px; }
+  .image-preview-list { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; }
+  .image-preview-list .thumb { position: relative; flex: none; }
+  .image-preview-list img { height: 60px; border-radius: 6px; border: 1px solid var(--border); object-fit: cover; }
+  .image-preview-list .remove {
+    position: absolute; top: -6px; right: -6px; background: var(--danger); color: #fff; border-radius: 999px;
+    width: 18px; height: 18px; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .image-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: flex; align-items: center; justify-content: center; z-index: 300; padding: 20px; }
+  .image-lightbox[hidden] { display: none; }
+  .image-lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; object-fit: contain; }
 
   /* ---------- Archives ---------- */
   .archive-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -310,39 +350,6 @@
   .toast.show { opacity: 1; transform: translateY(0); }
   .toast.completed { background: var(--brand); }
   .toast.overdue { background: var(--danger); }
-
-  /* ---------- Accordion Task ---------- */
-  .card.task-acc { padding: 0; border-radius: 999px; border: 1px solid var(--border); border-left: 1px solid var(--border); overflow: hidden; transition: all 0.2s; }
-  .task-acc-head { padding: 6px 10px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
-  .task-acc-head:hover { background: var(--column-bg); }
-  
-  /* terminee open style */
-  .card.task-acc.terminee.open { border-radius: 14px; border-color: var(--ok); border-left-color: var(--ok); }
-  .card.task-acc.terminee.open .task-acc-head { background: var(--ok-bg); border-bottom: 1px solid var(--ok-border); }
-  
-  /* a_faire open style */
-  .card.task-acc.a_faire.open { border-radius: 14px; border-color: #cbd5e1; border-left-color: #94a3b8; }
-  .card.task-acc.a_faire.open .task-acc-head { background: var(--column-bg); border-bottom: 1px solid var(--border); }
-
-  /* en_cours open style */
-  .card.task-acc.en_cours.open { border-radius: 14px; border-color: #93c5fd; border-left-color: var(--brand); }
-  .card.task-acc.en_cours.open .task-acc-head { background: #eff6ff; border-bottom: 1px solid #bfdbfe; }
-
-  /* en_retard open style */
-  .card.task-acc.en_retard.open { border-radius: 14px; border-color: var(--danger-border); border-left-color: var(--danger); }
-  .card.task-acc.en_retard.open .task-acc-head { background: var(--danger-bg); border-bottom: 1px solid var(--danger-border); }
-
-  /* archivee open style */
-  .card.task-acc.archivee.open { border-radius: 14px; border-color: #94a3b8; border-left-color: var(--muted); }
-  .card.task-acc.archivee.open .task-acc-head { background: var(--column-bg); border-bottom: 1px solid var(--border); }
-
-  .task-acc-left { display: flex; align-items: center; gap: 8px; overflow: hidden; }
-  .task-acc-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
-  .task-acc-right { display: flex; align-items: center; gap: 4px; flex: none; }
-  .task-acc-chevron { transition: transform 0.2s; color: var(--muted); display: inline-flex; align-items: center; }
-  .card.task-acc.open .task-acc-chevron { transform: rotate(180deg); }
-  .task-acc-body { display: none; padding: 10px 12px; }
-  .card.task-acc.open .task-acc-body { display: block; }
 
   @media (max-width: 860px) {
     nav.sidebar { position: static; height: auto; width: 100%; flex-direction: row; overflow-x: auto; padding: 8px clamp(12px,2vw,24px); }
@@ -381,10 +388,10 @@
 
   <div class="shell">
     <nav class="sidebar">
-      <button class="nav-item" data-view="dashboard"><span class="ic"><i data-lucide="home"></i></span> Dashboard</button>
-      <button class="nav-item" data-view="tasks"><span class="ic"><i data-lucide="check-square"></i></span> Tâches</button>
+      <button class="nav-item" data-view="dashboard"><span class="ic"><i data-lucide="layout-dashboard"></i></span> Dashboard</button>
+      <button class="nav-item" data-view="tasks"><span class="ic"><i data-lucide="clipboard-list"></i></span> Tâches</button>
       <button class="nav-item" data-view="employees"><span class="ic"><i data-lucide="users"></i></span> Employés</button>
-      <button class="nav-item" data-view="archives"><span class="ic"><i data-lucide="folder"></i></span> Archives</button>
+      <button class="nav-item" data-view="archives"><span class="ic"><i data-lucide="archive"></i></span> Archives</button>
     </nav>
 
     <main class="content">
@@ -399,6 +406,8 @@
         <div id="alerts"></div>
         <div class="section-title" style="margin-top:8px;">Charge de travail (personnel actif)</div>
         <div id="workload"></div>
+        <div class="section-title" style="margin-top:8px;">Classement — points de ponctualité</div>
+        <div id="leaderboard"></div>
       </section>
 
       <!-- ================= Tâches ================= -->
@@ -424,13 +433,13 @@
           <div><h2>Archives</h2><p>Tâches archivées — recherche, filtre et restauration</p></div>
         </div>
         <div class="archive-toolbar">
-          <input type="text" id="archiveSearch" placeholder="Rechercher un titre..." />
+          <input type="text" id="archiveSearch" placeholder="Rechercher un titre…" />
           <select id="archiveEmployeeFilter"><option value="">Tout le personnel</option></select>
-          <input type="date" id="archiveDateFilter" title="Filtrer par date" />
+          <input type="date" id="archiveDateFilter" title="Filtrer par date d'archivage" />
           <select id="archiveSort">
             <option value="recent">Plus récentes d'abord</option>
             <option value="old">Plus anciennes d'abord</option>
-            <option value="titre">Titre (A-Z)</option>
+            <option value="titre">Titre (A→Z)</option>
           </select>
         </div>
         <div id="archiveList"></div>
@@ -448,18 +457,18 @@
         <input type="text" id="taskTitre" required />
         <label>Description</label>
         <textarea id="taskDescription"></textarea>
-        <label>Temps alloué (Heures et/ou Minutes)</label>
-        <div style="display: flex; gap: 10px;">
-          <input type="number" id="taskHours" min="0" placeholder="Heures" value="0" style="flex: 1;" />
-          <input type="number" id="taskMinutes" min="0" placeholder="Minutes" value="15" style="flex: 1;" />
+        <label>Temps alloué (heures et/ou minutes)</label>
+        <div style="display:flex; gap:10px;">
+          <input type="number" id="taskHours" min="0" placeholder="Heures" value="0" style="flex:1;" />
+          <input type="number" id="taskMinutes" min="0" placeholder="Minutes" value="15" style="flex:1;" />
         </div>
-        <label>Captures d'écran (optionnel)</label>
+        <label>Captures d'écran (optionnel, 15 max)</label>
         <div style="display:flex; align-items:center; gap:10px;">
-          <input type="file" id="taskImage" accept="image/*" multiple style="display:none;" />
-          <button type="button" class="ghost" id="taskImageBtn" onclick="document.getElementById('taskImage').click()" style="padding: 6px 12px; font-size: 13px;">Ajouter des images</button>
-          <span id="taskImageCountText" style="font-size:12px; color:var(--muted);"></span>
+          <input type="file" id="taskImageInput" accept="image/png,image/jpeg,image/webp" multiple hidden />
+          <button type="button" class="ghost small" id="taskImageBtn">Ajouter des images</button>
+          <span id="taskImageCount" style="font-size:12px;color:var(--muted);"></span>
         </div>
-        <div id="taskImagePreviewContainer" style="display:flex; gap:8px; margin-top:8px; overflow-x:auto;"></div>
+        <div class="image-preview-list" id="taskImagePreview"></div>
         <label>Affilier à</label>
         <details class="assignee-dropdown" id="taskAssigneeDropdown">
           <summary><span class="txt" id="taskAssigneeSummary">Sélectionner le personnel</span></summary>
@@ -500,25 +509,25 @@
     </div>
   </div>
 
-  <!-- Modale : voir tâche archivée -->
+  <!-- input caché pour changer la photo depuis une carte employé existante -->
+  <input type="file" id="avatarChangeInput" accept="image/png,image/jpeg,image/webp" hidden />
+
+  <!-- Modale : voir une tâche archivée -->
   <div class="modal-backdrop" id="viewModalBackdrop" hidden>
     <div class="modal">
       <h2 id="viewTaskTitre"></h2>
-      <div id="viewTaskDesc" style="font-size:14px;color:var(--ink);margin-top:10px;"></div>
+      <div id="viewTaskDesc" style="font-size:14px;color:var(--ink);margin-top:4px;"></div>
+      <div class="task-images" id="viewTaskImages"></div>
       <div class="modal-footer">
         <button type="button" class="ghost" id="closeViewModal">Fermer</button>
       </div>
     </div>
   </div>
-  <!-- Modale : voir image en grand -->
-  <div class="modal-backdrop" id="imagePreviewModalBackdrop" hidden style="z-index: 200;">
-    <div style="position:relative; max-width:90vw; max-height:90vh;">
-      <img id="imagePreviewFull" src="" style="max-width:100%; max-height:90vh; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.5); object-fit:contain; background:#fff;" />
-      <span id="closeImagePreviewModal" style="position:absolute; top:-12px; right:-12px; background:#dc2626; color:#fff; border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:14px; box-shadow:0 2px 4px rgba(0,0,0,0.3);">✕</span>
-    </div>
+
+  <!-- Visionneuse plein écran pour une image de tâche -->
+  <div class="image-lightbox" id="imageLightbox" hidden>
+    <img id="imageLightboxImg" src="" alt="" />
   </div>
-  <!-- input caché pour changer la photo depuis une carte employé existante -->
-  <input type="file" id="avatarChangeInput" accept="image/png,image/jpeg,image/webp" hidden />
 
   <div id="toast" class="toast"></div>
 
@@ -647,35 +656,37 @@
       return `<div class="avatar" style="${avatarStyle(u)}" title="${u.prenom} ${u.nom}">${u.photo_url ? "" : initials(u)}</div>`;
     }
     function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
-    function renderDesc(desc) {
-      if (!desc) return "";
-      let txt = desc;
-      let imgsHTML = "";
-      const regex = /\[IMG\](.*?)\[\/IMG\]/g;
-      let m;
-      while ((m = regex.exec(desc)) !== null) {
-        imgsHTML += `<img src="${m[1]}" style="height:150px; border-radius:4px; border:1px solid #ddd; object-fit:contain; background:#fff;">`;
-        txt = txt.replace(m[0], "");
-      }
-      txt = txt.trim();
-      let imgsContainer = imgsHTML ? `<div style="margin-top:8px; display:flex; gap:8px; overflow-x:auto;">${imgsHTML}</div>` : "";
-      return txt || imgsContainer ? `<div class="desc">${txt ? escapeHtml(txt) : ""}${imgsContainer}</div>` : "";
-    }
     function formatDateFr(iso) {
       if (!iso) return "";
       const d = new Date(iso);
       return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) +
-        " à " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        " · " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
     }
-    
+    function formatDateShortFr(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) +
+        " · " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    }
+    // Deux dates sont considérées "identiques" si elles ne diffèrent que de
+    // quelques secondes (arrondis / écarts d'écriture en base).
+    function sameInstant(isoA, isoB) {
+      return Math.abs(new Date(isoA) - new Date(isoB)) < 5000;
+    }
     function formatMinutes(totalMin) {
       if (!totalMin) return "0 min";
-      const h = Math.floor(totalMin / 60);
-      const m = totalMin % 60;
+      const h = Math.floor(totalMin / 60), m = totalMin % 60;
       if (h > 0 && m > 0) return `${h}h ${m}min`;
       if (h > 0) return `${h}h`;
       return `${m} min`;
     }
+    function openLightbox(url) {
+      document.getElementById("imageLightboxImg").src = url;
+      document.getElementById("imageLightbox").hidden = false;
+    }
+    document.getElementById("imageLightbox").addEventListener("click", () => {
+      document.getElementById("imageLightbox").hidden = true;
+    });
 
     // ---------- Thème jour / nuit (à plat, sans dégradé) ----------
     function applyTheme(t) {
@@ -694,9 +705,8 @@
     function statSub(count, zeroText) { return count === 0 ? `<div class="l" style="margin-top:3px;font-weight:500;">${zeroText}</div>` : ""; }
 
     function renderDashboard() {
-      const counts = { a_faire: 0, en_cours: 0, en_retard: 0, terminee: 0, archivee: 0 };
+      const counts = { a_faire: 0, en_cours: 0, en_retard: 0, terminee: 0 };
       tasks.forEach(t => { if (counts[t.statut] !== undefined) counts[t.statut]++; });
-      counts.terminee = counts.archivee; // Since completed tasks skip directly to archived
       const actifs = users.filter(u => u.statut === "actif");
       const busyIds = new Set(tasks.filter(t => t.statut === "en_cours").flatMap(t => (t.assigned_users || []).map(u => u.id)));
       const disponibles = actifs.filter(u => !busyIds.has(u.id)).length;
@@ -722,13 +732,13 @@
             <div class="alert-card">
               <div class="left">
                 <div class="title btn-ic">${icon("triangle-alert")} ${escapeHtml(t.titre)}</div>
-                ${renderDesc(t.description)}
+                ${t.description ? `<div class="desc">${escapeHtml(t.description)}</div>` : ""}
               </div>
               <div class="mid">
                 <div class="field"><div class="l">Personnel</div><div class="v">${escapeHtml(names)}</div></div>
                 <div class="field retard"><div class="l">Retard</div><div class="v">${h > 0 ? h + "h " : ""}${m}min</div></div>
               </div>
-              <button class="primary small btn-ic" onclick="completeTask('${t.id}')">${icon("check")} Terminer</button>
+              <button class="primary small btn-ic" onclick="completeTask('${t.id}', true, this)">${icon("check")} Terminer</button>
             </div>`;
         }).join("");
       }
@@ -748,7 +758,26 @@
       }).join("") : `<p style="font-size:12.5px;color:var(--muted);">Aucun personnel actif.</p>`;
     }
 
+    // Classement des points de ponctualité (User.points, gagnés à chaque tâche
+    // terminée dans les délais) — consultable ici en un coup d'œil.
+    function renderLeaderboard() {
+      const board = document.getElementById("leaderboard");
+      const ranked = users.filter(u => u.statut === "actif").slice().sort((a, b) => b.points - a.points);
+      board.innerHTML = ranked.length ? ranked.map((u, i) => `
+        <div class="leaderboard-row">
+          <div class="rank">${i + 1}</div>
+          ${avatarHtml(u)}
+          <div class="name">${u.prenom} ${u.nom}</div>
+          <div class="pts btn-ic">${icon("award")} ${u.points}</div>
+        </div>`).join("") : `<p style="font-size:12.5px;color:var(--muted);">Aucun personnel actif.</p>`;
+    }
+
     // ---------- Board (Tâches) ----------
+    function countdownLabel(totalSec) {
+      const h = Math.floor(totalSec / 3600), m = Math.floor((totalSec % 3600) / 60), s = totalSec % 60;
+      if (h > 0) return `${h}h ${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+      return `${m}:${s.toString().padStart(2, "0")}`;
+    }
     function timeChip(t) {
       if (t.statut === "archivee") return `<span class="time-chip neutral btn-ic">${icon("archive")} archivée</span>`;
       if (t.statut === "terminee") return `<span class="time-chip ok btn-ic">${icon("check")} terminée</span>`;
@@ -756,32 +785,27 @@
       const ms = new Date(t.date_fin_prevue) - new Date();
       const cls = ms <= 0 ? "danger" : ms < 5 * 60 * 1000 ? "warn" : "ok";
       const totalSec = Math.max(0, Math.floor(ms / 1000));
-      const hours = Math.floor(totalSec / 3600);
-      const mins = Math.floor((totalSec % 3600) / 60);
-      const secs = totalSec % 60;
-      const label = ms <= 0 ? "écoulé" : hours > 0 ? `${hours}h ${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}` : `${mins}:${secs.toString().padStart(2, "0")}`;
+      const label = ms <= 0 ? "écoulé" : countdownLabel(totalSec);
       return `<span class="time-chip ${cls}" data-fin="${t.date_fin_prevue}">${label}</span>`;
     }
 
-    function toggleAcc(el) {
-      el.closest('.task-acc').classList.toggle('open');
-    }
+    function toggleAcc(el) { el.closest(".task-acc").classList.toggle("open"); }
 
     function cardHtml(t) {
       const av = (t.assigned_users || []).slice(0, 4).map(avatarHtml).join("");
       const actions = [];
-      if (t.statut === "a_faire") {
-        actions.push(`<button class="primary small btn-ic" onclick="startTask('${t.id}')">${icon("play")} Démarrer</button>`);
-        actions.push(`<button class="ghost small" onclick="archiveTask('${t.id}')" title="Archiver">${icon("archive")}</button>`);
-      } else if (t.statut === "en_cours" || t.statut === "en_retard") {
-        actions.push(`<button class="primary small btn-ic" onclick="completeTask('${t.id}')">${icon("check")} Terminer</button>`);
-        actions.push(`<button class="ghost small" onclick="archiveTask('${t.id}')" title="Archiver">${icon("archive")}</button>`);
-      } else if (t.statut === "archivee") {
-        actions.push(`<button class="ghost small btn-ic" onclick="restoreTask('${t.id}')">${icon("rotate-ccw")} Restaurer</button>`);
-      } else if (t.statut === "terminee") {
-        actions.push(`<button class="ghost small" onclick="archiveTask('${t.id}')" title="Archiver">${icon("archive")}</button>`);
-      }
-
+      if (t.statut === "a_faire") actions.push(`<button class="primary small btn-ic" onclick="startTask('${t.id}', true, this)">${icon("play")} Démarrer</button>`);
+      if (t.statut === "en_cours" || t.statut === "en_retard") actions.push(`<button class="primary small btn-ic" onclick="completeTask('${t.id}', true, this)">${icon("check")} Terminer</button>`);
+      if (t.statut === "archivee") {
+        actions.push(`<button class="ghost small btn-ic" onclick="restoreTask('${t.id}', true, this)">${icon("rotate-ccw")} Restaurer</button>`);
+        actions.push(`<button class="ghost small" onclick="deleteTask('${t.id}', this)" title="Supprimer définitivement">${icon("trash-2")}</button>`);
+      } else actions.push(`<button class="ghost small" onclick="archiveTask('${t.id}', true, this)" title="Archiver">${icon("archive")}</button>`);
+      const dates = sameInstant(t.created_at, t.updated_at)
+        ? `Créée le ${formatDateShortFr(t.created_at)}`
+        : `Créée le ${formatDateShortFr(t.created_at)} · modifiée le ${formatDateShortFr(t.updated_at)}`;
+      const images = (t.image_urls || []).length
+        ? `<div class="task-images">${t.image_urls.map(u => `<img src="${u}" onclick="event.stopPropagation(); openLightbox('${u}')">`).join("")}</div>`
+        : "";
       return `
         <div class="card task-acc ${t.statut}" draggable="true" data-id="${t.id}" data-statut="${t.statut}">
           <div class="task-acc-head" onclick="toggleAcc(this)">
@@ -795,8 +819,10 @@
             </div>
           </div>
           <div class="task-acc-body">
-            ${renderDesc(t.description)}
-            <div class="card-actions" style="margin-top:0;">${actions.join("")}</div>
+            ${t.description ? `<div class="desc">${escapeHtml(t.description)}</div>` : ""}
+            ${images}
+            <div class="meta-dates">${dates}</div>
+            <div class="card-actions">${actions.join("")}</div>
           </div>
         </div>`;
     }
@@ -805,17 +831,14 @@
       const board = document.getElementById("board");
       board.innerHTML = COLUMNS.map(col => {
         const items = tasks.filter(t => t.statut === col.key);
-        const displayCount = col.key === "terminee" ? tasks.filter(t => t.statut === "archivee").length : items.length;
         return `
           <div class="column" data-status="${col.key}">
             <div class="column-head">
               <span class="name"><span class="flag" style="background:${col.flag}"></span>${col.label}</span>
-              <span class="count">${displayCount}</span>
+              <span class="count">${items.length}</span>
             </div>
             <div class="card-list" data-status="${col.key}">
-              ${col.key === "archivee" 
-                  ? '<div class="empty">Visibles dans l\'onglet Archives</div>' 
-                  : (items.length ? items.map(cardHtml).join("") : '<div class="empty">Aucune tâche</div>')}
+              ${items.length ? items.map(cardHtml).join("") : '<div class="empty">Aucune tâche</div>'}
             </div>
             ${col.key === "a_faire" ? '<button class="add-card-btn" id="inlineAddTask">+ Ajouter une tâche</button>' : ""}
           </div>`;
@@ -831,10 +854,7 @@
         const cls = ms <= 0 ? "danger" : ms < 5 * 60 * 1000 ? "warn" : "ok";
         el.className = "time-chip " + cls;
         const totalSec = Math.max(0, Math.floor(ms / 1000));
-        const hours = Math.floor(totalSec / 3600);
-        const mins = Math.floor((totalSec % 3600) / 60);
-        const secs = totalSec % 60;
-        el.textContent = ms <= 0 ? "écoulé" : hours > 0 ? `${hours}h ${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}` : `${mins}:${secs.toString().padStart(2, "0")}`;
+        el.textContent = ms <= 0 ? "écoulé" : countdownLabel(totalSec);
       });
     }
     setInterval(tickTimers, 1000);
@@ -877,11 +897,51 @@
     }
 
     // ---------- Actions tâches ----------
-    async function startTask(id, reload = true) { try { await api(`/tasks/${id}/start`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
-    async function completeTask(id, reload = true) { try { await api(`/tasks/${id}/complete`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
-    async function archiveTask(id, reload = true) { try { await api(`/tasks/${id}/archive`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
-    async function restoreTask(id, reload = true) { try { await api(`/tasks/${id}/restore`, { method: "POST" }); if (reload) await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
-    async function archiveUser(id) { try { await api(`/users/${id}/archive`, { method: "POST" }); await loadAll(); } catch (e) { showToast(e.message, "overdue"); } }
+    // Idempotence côté UI : le bouton cliqué se désactive immédiatement (protège
+    // contre un double-clic) ; il n'est réactivé qu'en cas d'échec (le succès
+    // passe par loadAll(), qui régénère de toute façon des boutons neufs).
+    // Idempotence côté serveur (voir app/routers/tasks.py) : start/complete/archive
+    // sont eux-mêmes des no-op sûrs si rejoués sur une tâche déjà dans cet état.
+    async function startTask(id, reload = true, btn = null) {
+      if (btn) btn.disabled = true;
+      try { await api(`/tasks/${id}/start`, { method: "POST" }); if (reload) await loadAll(); }
+      catch (e) { showToast(e.message, "overdue"); if (btn) btn.disabled = false; }
+    }
+    async function completeTask(id, reload = true, btn = null) {
+      if (btn) btn.disabled = true;
+      try { await api(`/tasks/${id}/complete`, { method: "POST" }); if (reload) await loadAll(); }
+      catch (e) { showToast(e.message, "overdue"); if (btn) btn.disabled = false; }
+    }
+    async function archiveTask(id, reload = true, btn = null) {
+      if (btn) btn.disabled = true;
+      try { await api(`/tasks/${id}/archive`, { method: "POST" }); if (reload) await loadAll(); }
+      catch (e) { showToast(e.message, "overdue"); if (btn) btn.disabled = false; }
+    }
+    async function restoreTask(id, reload = true, btn = null) {
+      if (btn) btn.disabled = true;
+      try { await api(`/tasks/${id}/restore`, { method: "POST" }); if (reload) await loadAll(); }
+      catch (e) { showToast(e.message, "overdue"); if (btn) btn.disabled = false; }
+    }
+    async function deleteTask(id, btn = null) {
+      const t = tasks.find(t => t.id === id);
+      if (!confirm(`Supprimer définitivement la tâche « ${t ? t.titre : ""} » ? Cette action est irréversible.`)) return;
+      if (btn) btn.disabled = true;
+      try { await api(`/tasks/${id}`, { method: "DELETE" }); await loadAll(); }
+      catch (e) { showToast(e.message, "overdue"); if (btn) btn.disabled = false; }
+    }
+    async function archiveUser(id, btn = null) {
+      if (btn) btn.disabled = true;
+      try { await api(`/users/${id}/archive`, { method: "POST" }); await loadAll(); }
+      catch (e) { showToast(e.message, "overdue"); if (btn) btn.disabled = false; }
+    }
+    async function deleteUser(id, btn = null) {
+      const u = users.find(u => u.id === id);
+      const nom = u ? `${u.prenom} ${u.nom}` : "";
+      if (!confirm(`Supprimer définitivement « ${nom} » ? Cette action est irréversible (l'historique des tâches déjà terminées est conservé, sans l'affiliation).`)) return;
+      if (btn) btn.disabled = true;
+      try { await api(`/users/${id}`, { method: "DELETE" }); await loadAll(); }
+      catch (e) { showToast(e.message, "overdue"); if (btn) btn.disabled = false; }
+    }
 
     // ---------- Modale tâche ----------
     function updateAssigneeSummary() {
@@ -893,6 +953,30 @@
     }
     document.getElementById("taskUserChecks").addEventListener("change", updateAssigneeSummary);
 
+    let taskImageFiles = [];
+    function renderTaskImagePreview() {
+      const box = document.getElementById("taskImagePreview");
+      box.innerHTML = taskImageFiles.map((file, idx) => {
+        const url = URL.createObjectURL(file);
+        return `<div class="thumb"><img src="${url}"><span class="remove" onclick="removeTaskImage(${idx})">✕</span></div>`;
+      }).join("");
+      const count = document.getElementById("taskImageCount");
+      count.textContent = taskImageFiles.length ? `${taskImageFiles.length}/${TASK_IMAGE_MAX} sélectionnée(s)` : "";
+    }
+    function removeTaskImage(idx) { taskImageFiles.splice(idx, 1); renderTaskImagePreview(); }
+    const TASK_IMAGE_MAX = 15;
+    document.getElementById("taskImageBtn").addEventListener("click", () => document.getElementById("taskImageInput").click());
+    document.getElementById("taskImageInput").addEventListener("change", (e) => {
+      const newFiles = Array.from(e.target.files);
+      e.target.value = "";
+      if (taskImageFiles.length + newFiles.length > TASK_IMAGE_MAX) {
+        showToast(`Maximum ${TASK_IMAGE_MAX} images — il reste ${TASK_IMAGE_MAX - taskImageFiles.length} emplacement(s).`, "overdue");
+        return;
+      }
+      taskImageFiles.push(...newFiles);
+      renderTaskImagePreview();
+    });
+
     function openTaskModal() {
       const checks = document.getElementById("taskUserChecks");
       const actifs = users.filter(u => u.statut === "actif");
@@ -901,119 +985,46 @@
         : '<span class="empty">Aucun personnel actif — ajoutez d\'abord une personne.</span>';
       document.getElementById("taskAssigneeDropdown").open = false;
       updateAssigneeSummary();
+      taskImageFiles = [];
+      renderTaskImagePreview();
       document.getElementById("taskModalBackdrop").hidden = false;
       document.getElementById("taskTitre").focus();
     }
-    let taskImageFiles = []; // accumulated screenshots
-    function closeTaskModal() { document.getElementById("taskModalBackdrop").hidden = true; document.getElementById("taskForm").reset(); taskImageFiles = []; renderImagePreviews(); updateAssigneeSummary(); }
+    function closeTaskModal() {
+      document.getElementById("taskModalBackdrop").hidden = true;
+      document.getElementById("taskForm").reset();
+      taskImageFiles = []; renderTaskImagePreview(); updateAssigneeSummary();
+    }
     document.getElementById("openTaskModalBtn").addEventListener("click", openTaskModal);
     document.getElementById("cancelTaskModal").addEventListener("click", closeTaskModal);
     document.getElementById("taskModalBackdrop").addEventListener("click", (e) => { if (e.target.id === "taskModalBackdrop") closeTaskModal(); });
 
     document.getElementById("taskForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
       const userIds = Array.from(document.querySelectorAll("#taskUserChecks input:checked")).map(i => i.value);
-      const h = parseInt(document.getElementById("taskHours").value || 0, 10);
-      const m = parseInt(document.getElementById("taskMinutes").value || 0, 10);
-      const totalMin = (h * 60) + m;
-      if (totalMin <= 0) {
-        showToast("Veuillez allouer au moins 1 minute", "overdue");
-        return;
-      }
-
-      let baseDesc = document.getElementById("taskDescription").value.trim();
-
-      const submitTask = async (finalDesc) => {
-        try {
-          await api("/tasks", { method: "POST", body: JSON.stringify({
-            titre: document.getElementById("taskTitre").value.trim(),
-            description: finalDesc || null,
-            minutes_allouees: totalMin,
-            user_ids: userIds,
-          })});
-          closeTaskModal();
-          document.getElementById("taskHours").value = 0;
-          document.getElementById("taskMinutes").value = 15;
-          await loadAll();
-        } catch (err) { showToast(err.message, "overdue"); }
-      };
-
-      if (taskImageFiles.length > 0) {
-        const processFile = (file) => new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-            const img = new Image();
-            img.onload = () => {
-              const canvas = document.createElement("canvas");
-              let w = img.width, hImg = img.height;
-              if (w > 800) { hImg = Math.round(hImg * 800 / w); w = 800; }
-              canvas.width = w; canvas.height = hImg;
-              canvas.getContext("2d").drawImage(img, 0, 0, w, hImg);
-              resolve(`[IMG]${canvas.toDataURL("image/jpeg", 0.7)}[/IMG]`);
-            };
-            img.src = ev.target.result;
-          };
-          reader.readAsDataURL(file);
-        });
-        Promise.all(taskImageFiles.map(processFile)).then(imgTags => {
-          submitTask(baseDesc + (baseDesc ? "\n\n" : "") + imgTags.join("\n"));
-        });
-      } else {
-        submitTask(baseDesc);
-      }
-    });
-
-    function renderImagePreviews() {
-      const container = document.getElementById("taskImagePreviewContainer");
-      container.innerHTML = "";
-      taskImageFiles.forEach((file, idx) => {
-        const wrapper = document.createElement("div");
-        wrapper.style.cssText = "position:relative; display:inline-block; flex-shrink:0;";
-        const img = document.createElement("img");
-        img.style.cssText = "height:60px; border-radius:4px; border:1px solid var(--border); object-fit:cover;";
-        const removeBtn = document.createElement("span");
-        removeBtn.textContent = "✕";
-        removeBtn.style.cssText = "position:absolute; top:-6px; right:-6px; background:#dc2626; color:#fff; border-radius:50%; width:18px; height:18px; font-size:11px; display:flex; align-items:center; justify-content:center; cursor:pointer;";
-        removeBtn.onclick = () => { taskImageFiles.splice(idx, 1); renderImagePreviews(); };
-        const reader = new FileReader();
-        reader.onload = (ev) => { 
-          img.src = ev.target.result; 
-          img.style.cursor = "pointer";
-          img.onclick = () => {
-            document.getElementById("imagePreviewFull").src = ev.target.result;
-            document.getElementById("imagePreviewModalBackdrop").hidden = false;
-          };
-        };
-        reader.readAsDataURL(file);
-        wrapper.appendChild(img);
-        wrapper.appendChild(removeBtn);
-        container.appendChild(wrapper);
-      });
-      
-      const btn = document.getElementById("taskImageBtn");
-      const txt = document.getElementById("taskImageCountText");
-      if (taskImageFiles.length > 0) {
-        btn.textContent = "Ajouter à nouveau";
-        txt.textContent = `${taskImageFiles.length}/15 sélectionnée(s)`;
-      } else {
-        btn.textContent = "Ajouter des images";
-        txt.textContent = "";
-      }
-    }
-
-    document.getElementById("closeImagePreviewModal").addEventListener("click", () => document.getElementById("imagePreviewModalBackdrop").hidden = true);
-    document.getElementById("imagePreviewModalBackdrop").addEventListener("click", (e) => { if (e.target.id === "imagePreviewModalBackdrop") document.getElementById("imagePreviewModalBackdrop").hidden = true; });
-
-    document.getElementById("taskImage").addEventListener("change", (e) => {
-      const newFiles = Array.from(e.target.files);
-      if (taskImageFiles.length + newFiles.length > 15) {
-        showToast(`Maximum 15 captures. Il vous reste ${15 - taskImageFiles.length} emplacement(s).`, "overdue");
-        e.target.value = "";
-        return;
-      }
-      taskImageFiles.push(...newFiles);
-      e.target.value = "";
-      renderImagePreviews();
+      const hours = parseInt(document.getElementById("taskHours").value || "0", 10);
+      const minutes = parseInt(document.getElementById("taskMinutes").value || "0", 10);
+      const totalMin = hours * 60 + minutes;
+      if (totalMin <= 0) { showToast("Veuillez allouer au moins 1 minute", "overdue"); submitBtn.disabled = false; return; }
+      try {
+        const created = await api("/tasks", { method: "POST", body: JSON.stringify({
+          titre: document.getElementById("taskTitre").value.trim(),
+          description: document.getElementById("taskDescription").value.trim() || null,
+          minutes_allouees: totalMin,
+          user_ids: userIds,
+        })});
+        for (const file of taskImageFiles) {
+          const fd = new FormData(); fd.append("file", file);
+          await api(`/tasks/${created.id}/images`, { method: "POST", body: fd });
+        }
+        closeTaskModal();
+        document.getElementById("taskHours").value = 0;
+        document.getElementById("taskMinutes").value = 15;
+        await loadAll();
+      } catch (err) { showToast(err.message, "overdue"); }
+      finally { submitBtn.disabled = false; }
     });
 
     // ---------- Employés ----------
@@ -1032,7 +1043,14 @@
             <div class="name">${u.prenom} ${u.nom}</div>
             <div class="role">${u.role}</div>
             <div class="load"><b>${n}</b> tâche${n > 1 ? "s" : ""} active${n > 1 ? "s" : ""}</div>
-            ${u.statut === "actif" ? `<button class="danger-text" onclick="archiveUser('${u.id}')">Archiver</button>` : `<span style="font-size:11.5px;color:var(--muted);">Archivé</span>`}
+            <div class="points btn-ic">${icon("award")} ${u.points} pt${u.points > 1 ? "s" : ""}</div>
+            <div class="dates">
+              Inscrit·e le ${formatDateShortFr(u.created_at)}
+              ${sameInstant(u.created_at, u.updated_at) ? "" : `<br>Mis à jour le ${formatDateShortFr(u.updated_at)}`}
+            </div>
+            ${u.statut === "actif"
+              ? `<button class="danger-text" onclick="archiveUser('${u.id}', this)">Archiver</button>`
+              : `<span style="font-size:11.5px;color:var(--muted);">Archivé</span> · <button class="danger-text" onclick="deleteUser('${u.id}', this)">Supprimer</button>`}
           </div>`;
       }).join("");
       grid.innerHTML = cards + `
@@ -1064,10 +1082,7 @@
       let filtered = archived.filter(t => {
         if (search && !t.titre.toLowerCase().includes(search)) return false;
         if (empFilter && !(t.assigned_users || []).some(u => u.id === empFilter)) return false;
-        if (dateFilter) {
-          const tDate = new Date(t.updated_at).toISOString().split('T')[0];
-          if (tDate !== dateFilter) return false;
-        }
+        if (dateFilter && new Date(t.updated_at).toISOString().split("T")[0] !== dateFilter) return false;
         return true;
       });
 
@@ -1096,25 +1111,27 @@
             </div>
             <div class="archive-date">Archivée le ${formatDateFr(t.updated_at)}</div>
             <button class="ghost small btn-ic" onclick="viewTask('${t.id}')">${icon("eye")} Voir</button>
-            <button class="ghost small btn-ic" onclick="restoreTask('${t.id}')">${icon("rotate-ccw")} Restaurer</button>
+            <button class="ghost small btn-ic" onclick="restoreTask('${t.id}', true, this)">${icon("rotate-ccw")} Restaurer</button>
           </div>`;
       }).join("");
       lucide.createIcons();
     }
-    
-    function viewTask(id) {
-      const t = tasks.find(x => x.id === id);
-      if (!t) return;
-      document.getElementById("viewTaskTitre").textContent = t.titre;
-      document.getElementById("viewTaskDesc").innerHTML = renderDesc(t.description);
-      document.getElementById("viewModalBackdrop").hidden = false;
-    }
-    document.getElementById("closeViewModal").addEventListener("click", () => document.getElementById("viewModalBackdrop").hidden = true);
-    document.getElementById("viewModalBackdrop").addEventListener("click", (e) => { if (e.target.id === "viewModalBackdrop") document.getElementById("viewModalBackdrop").hidden = true; });
     ["archiveSearch", "archiveEmployeeFilter", "archiveDateFilter", "archiveSort"].forEach(id => {
       document.getElementById(id).addEventListener("input", renderArchives);
       document.getElementById(id).addEventListener("change", renderArchives);
     });
+
+    function viewTask(id) {
+      const t = tasks.find(x => x.id === id);
+      if (!t) return;
+      document.getElementById("viewTaskTitre").textContent = t.titre;
+      document.getElementById("viewTaskDesc").textContent = t.description || "";
+      document.getElementById("viewTaskImages").innerHTML = (t.image_urls || [])
+        .map(u => `<img src="${u}" onclick="openLightbox('${u}')">`).join("");
+      document.getElementById("viewModalBackdrop").hidden = false;
+    }
+    document.getElementById("closeViewModal").addEventListener("click", () => document.getElementById("viewModalBackdrop").hidden = true);
+    document.getElementById("viewModalBackdrop").addEventListener("click", (e) => { if (e.target.id === "viewModalBackdrop") document.getElementById("viewModalBackdrop").hidden = true; });
 
     let avatarTargetUserId = null;
     function pickAvatar(userId) {
@@ -1162,6 +1179,8 @@
 
     document.getElementById("userForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
       try {
         const created = await api("/users", { method: "POST", body: JSON.stringify({
           prenom: document.getElementById("userPrenom").value.trim(),
@@ -1175,13 +1194,14 @@
         closeUserModal();
         await loadAll();
       } catch (err) { showToast(err.message, "overdue"); }
+      finally { submitBtn.disabled = false; }
     });
 
     // ---------- Chargement ----------
     async function loadAll() {
       try {
         [users, tasks] = await Promise.all([api("/users"), api("/tasks")]);
-        renderDashboard(); renderBoard(); renderEmployees(); renderArchives();
+        renderDashboard(); renderLeaderboard(); renderBoard(); renderEmployees(); renderArchives();
         lucide.createIcons();
       } catch (e) { console.error(e); }
     }
@@ -1193,6 +1213,7 @@
         if (msg.type === "task.created") { showToast(`Nouvelle tâche : ${msg.task.titre}`, ""); beep(880, 200); }
         else if (msg.type === "task.completed") { showToast(`Tâche terminée : ${msg.task.titre}`, "completed"); beep(520, 250); }
         else if (msg.type === "task.overdue") { showToast(`Tâche en retard : ${msg.task.titre}`, "overdue"); beep(300, 350); }
+        else if (msg.type === "task.deleted") { showToast(`Tâche supprimée : ${msg.task.titre}`, ""); }
         loadAll();
       };
       ws.onclose = () => setTimeout(connectWS, 2000);
